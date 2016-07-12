@@ -36,7 +36,15 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-  div []
+  div [ dieStyle ]
     [ h1 [] [ text (toString model.dieFace) ]
     , button [ onClick Roll ] [ text "Roll" ]
+    ]
+
+dieStyle : Attribute msg
+dieStyle =
+  style
+    [ ("display", "inline-block")
+    , ("width", "50px")
+    , ("text-align", "center")
     ]
