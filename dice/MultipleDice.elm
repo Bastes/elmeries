@@ -2,6 +2,7 @@ import Die
 import Html exposing (Html, button, div, text)
 import Html.App as App
 import Html.Events exposing (onClick)
+import List exposing (unzip, repeat, indexedMap)
 
 main =
   App.program
@@ -25,11 +26,15 @@ type alias IndexedDie =
 
 init : (Model, Cmd Msg)
 init =
-  ( { dice = []
-    , uid  = 0
-    }
-  , Cmd.none
-  )
+  let
+    number = 3
+    (dice, cmds) = unzip <| repeat number Die.init
+  in
+    ( { dice = indexedMap (\uid d -> { id = uid, model = d }) dice
+      , uid  = number
+      }
+    , Cmd.batch <| indexedMap (\uid c -> Cmd.map (Trigger (uid + 1)) c) cmds
+    )
 
 -- UPDATE
 
