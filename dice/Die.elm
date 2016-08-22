@@ -56,7 +56,7 @@ dieBodyOffsetS = toString dieBodyOffset
 dieBodyWidthS  = toString (dieWidth - dieBodyOffset * 2)
 dieBodyRadiusS = toString (dieRadius * 2)
 dieBody        = rect [x dieBodyOffsetS, y dieBodyOffsetS, width dieBodyWidthS, height dieBodyWidthS, rx dieBodyRadiusS, ry dieBodyRadiusS, fill "#ffffff", stroke "#000000"] []
-dot x y       = circle [ cx (toString x), cy (toString y), r (toString dieRadius), fill "#000000" ] []
+dot x y        = circle [ cx (toString x), cy (toString y), r (toString dieRadius), fill "#000000" ] []
 
 face : Model -> Html Msg
 face { dieFace } =
