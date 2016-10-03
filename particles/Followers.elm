@@ -3,7 +3,7 @@ import Html.App as App
 import Svg exposing (..)
 import Svg.Attributes exposing (viewBox, width, height, cx, cy, r, fill)
 import Time exposing (Time, second)
-import Math.Vector2 exposing (Vec2, vec2, add, getX, getY, normalize, scale, distance, direction)
+import Math.Vector2 exposing (Vec2, vec2, add, sub, getX, getY, normalize, scale, distance, direction)
 import Array exposing (get, fromList)
 import Maybe exposing (withDefault, andThen)
 
@@ -29,17 +29,23 @@ type alias Model    = { particles: List Particle
 
 
 init : (Model, Cmd Msg)
-init = ( { particles= List.foldr (++) [] <| List.map (\y -> List.map ((\y x -> {position= vec2 (10 * x) (10 * y), speed= vec2 0 0, waypointIndex= 0}) y) [1..10]) [1..10]
-         , waypoints= [ vec2 150 150
-                      , vec2 350 150
-                      , vec2 350 350
-                      , vec2 150 350
-                      , vec2 250 250
-                      ]
+init = ( { particles= List.foldr (++) [] <| List.map (\y -> List.map ((\y x -> {position= vec2 (400 + 20 * x) (400 + 20 * y), speed= vec2 0 0, waypointIndex= 0}) y) [0..10]) [0..10]
+         , waypoints= List.map (\n -> rotateAround (vec2 500 500) (n * 2 * pi / 7) <| vec2 100 500) [0..6]
          }
        , Cmd.none
        )
 
+rotate : Float -> Vec2 -> Vec2
+rotate a v =
+  let
+    (x, y) = (getX v, getY v)
+    (c, s) = (cos a, sin a)
+  in
+     vec2 (c * x - s * y) (s * x + c * y)
+
+
+rotateAround : Vec2 -> Float -> Vec2 -> Vec2
+rotateAround c a = add c << rotate a << sub c
 
 -- UPDATE
 
@@ -68,7 +74,7 @@ updateParticleWaypointIndex waypoints ({position, waypointIndex} as particle) =
   let
     maybeWaypoint      = get waypointIndex <| fromList waypoints
     maybeWaypointIndex = maybeWaypoint `andThen` \waypoint ->
-      case (distance waypoint position) < 10.0 of
+      case (distance waypoint position) < 1.0 of
         True  -> Just <| (waypointIndex + 1) % (List.length waypoints)
         False -> Just waypointIndex
     newWaypointIndex = withDefault 0 maybeWaypointIndex
@@ -109,7 +115,7 @@ updateParticlePosition ({position, speed} as particle) =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Time.every (second / 200) Tick
+  Time.every (second / 1000) Tick
 
 
 -- VIEW
@@ -120,7 +126,7 @@ view ({ particles, waypoints } as model) =
     particleViews = List.map particleView particles
     waypointViews = List.map waypointView waypoints
   in
-    svg [ viewBox "0 0 500 500", width "500px", height "500px" ]
+    svg [ viewBox "0 0 1000 1000", width "1000px", height "1000px" ]
       (waypointViews ++ particleViews)
 
 particleView ({ position, waypointIndex } as particle) =
