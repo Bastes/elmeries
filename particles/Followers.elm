@@ -29,11 +29,17 @@ type alias Model    = { particles: List Particle
 
 
 init : (Model, Cmd Msg)
-init = ( { particles= List.foldr (++) [] <| List.map (\y -> List.map ((\y x -> {position= vec2 (400 + 20 * x) (400 + 20 * y), speed= vec2 0 0, waypointIndex= 0}) y) [0..10]) [0..10]
-         , waypoints= List.map (\n -> rotateAround (vec2 500 500) (n * 2 * pi / 7) <| vec2 100 500) [0..6]
-         }
-       , Cmd.none
-       )
+init =
+  let
+      waypoints = List.map (\n -> rotateAround (vec2 500 500) (n * 2 * pi / 7) <| vec2 500 900) [0..6]
+               ++ List.map (\n -> rotateAround (vec2 500 500) (n * 2 * pi / 7) <| vec2 500 700) [0..6]
+      particles = List.foldr (++) [] <| List.map (\y -> List.map ((\y x -> {position= vec2 (300 + 40 * x) (300 + 40 * y), speed= vec2 0 0, waypointIndex= 0}) y) [0..10]) [0..10]
+  in
+     ( { particles= particles
+       , waypoints= waypoints
+       }
+     , Cmd.none
+     )
 
 rotate : Float -> Vec2 -> Vec2
 rotate a v =
@@ -74,7 +80,7 @@ updateParticleWaypointIndex waypoints ({position, waypointIndex} as particle) =
   let
     maybeWaypoint      = get waypointIndex <| fromList waypoints
     maybeWaypointIndex = maybeWaypoint `andThen` \waypoint ->
-      case (distance waypoint position) < 1.0 of
+      case (distance waypoint position) < 10.0 of
         True  -> Just <| (waypointIndex + 1) % (List.length waypoints)
         False -> Just waypointIndex
     newWaypointIndex = withDefault 0 maybeWaypointIndex
@@ -141,4 +147,4 @@ waypointView position =
     px = toString <| getX position
     py = toString <| getY position
   in
-    circle [ cx px, cy py, r "2", fill "#ff0000" ] []
+    circle [ cx px, cy py, r "2", fill "#eeeeee" ] []
