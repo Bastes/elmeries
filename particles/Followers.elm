@@ -101,10 +101,11 @@ attractParticleTo : List Waypoint -> Particle -> Particle
 attractParticleTo waypoints ({position, speed, waypointIndex} as particle) =
   let
     waypoint = waypointOf waypoints particle
-    newSpeed = limitSpeed 5
-            <| add (scale 0.99 speed)
-            <| scale 0.1
-            <| direction waypoint position
+    newSpeed = position
+            |> direction waypoint
+            |> scale 0.1
+            |> add (scale 0.99 speed)
+            |> limitSpeed 5
   in
     { particle | speed= newSpeed }
 
@@ -115,9 +116,10 @@ waypointOf waypoints { waypointIndex } = withDefault (vec2 0 0)
 
 limitSpeed : Float -> Vec2 -> Vec2
 limitSpeed max speed =
-  case (Math.Vector2.length speed > max) of
-    True  -> speed |> normalize |> scale max
-    False -> speed
+  if Math.Vector2.length speed > max then
+    speed |> normalize |> scale max
+  else
+    speed
 
 updateParticlesPosition : List Particle -> List Particle
 updateParticlesPosition particles = List.map updateParticlePosition particles
