@@ -27,17 +27,20 @@ type alias Model    = { particles: List Particle
                       , waypoints: List Waypoint
                       }
 
+imgWidth  = 1000
+imgHeight =  900
+
 
 init : (Model, Cmd Msg)
 init =
   let
-      waypoints = [ vec2 700 200
-                  , vec2 300 400
-                  , vec2 700 600
-                  , vec2 300 800
+      waypoints = [ vec2 (imgWidth * 0.7) (imgHeight * 0.2)
+                  , vec2 (imgWidth * 0.3) (imgHeight * 0.4)
+                  , vec2 (imgWidth * 0.7) (imgHeight * 0.6)
+                  , vec2 (imgWidth * 0.3) (imgHeight * 0.8)
                   ]
       particles = List.foldr (++) [] <| List.map (\y -> List.map ((\y x ->
-        { position=      vec2 (300 + 40 * x) (300 + 40 * y)
+        { position=      vec2 (imgWidth * 0.5 - 200 + 40 * x) (imgHeight * 0.5 - 200 + 40 * y)
         , speed=         vec2 0 0
         , waypointIndex= 0
         }) y) [0..10]) [0..10]
@@ -110,7 +113,7 @@ attractParticleTo waypoints ({position, speed, waypointIndex} as particle) =
     { particle | speed= newSpeed }
 
 waypointOf : List Waypoint -> Particle -> Waypoint
-waypointOf waypoints { waypointIndex } = withDefault (vec2 0 0)
+waypointOf waypoints { waypointIndex } = withDefault (vec2 (imgWidth * 0.5) (imgHeight * 0.5))
                                       <| get waypointIndex
                                       <| fromList waypoints
 
@@ -144,7 +147,7 @@ view {particles, waypoints} =
     particleViews = List.map particleView particles
     waypointViews = List.map waypointView waypoints
   in
-    svg [ viewBox "0 0 1000 1000", width "1000px", height "1000px" ]
+    svg [ viewBox <| "0 0 " ++ (toString imgWidth) ++ " " ++ (toString imgHeight), width ((toString imgWidth) ++ "px"), height ((toString imgHeight) ++ "px") ]
       (waypointViews ++ particleViews)
 
 particleView {position, speed} =
