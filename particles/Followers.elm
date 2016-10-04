@@ -1,7 +1,7 @@
 import Html exposing (Html)
 import Html.App as App
 import Svg exposing (..)
-import Svg.Attributes exposing (viewBox, width, height, cx, cy, r, fill, stroke)
+import Svg.Attributes exposing (viewBox, width, height, cx, cy, r, fill)
 import Time exposing (Time, second)
 import Math.Vector2 exposing (Vec2, vec2, add, sub, getX, getY, normalize, scale, distance, direction)
 import Array exposing (get, fromList)
@@ -97,9 +97,9 @@ updateParticleSpeed waypoints ({position, speed, waypointIndex} as particle) =
   let
     maybeWaypoint = get waypointIndex <| fromList waypoints
     maybeSpeed    = maybeWaypoint `andThen` \waypoint -> Just
-                                                      <| limitSpeed 1
-                                                      <| add (scale 0.999 speed)
-                                                      <| scale 0.01
+                                                      <| limitSpeed 5
+                                                      <| add (scale 0.99 speed)
+                                                      <| scale 0.1
                                                       <| direction waypoint position
     newSpeed      = withDefault speed maybeSpeed
   in
@@ -123,7 +123,7 @@ updateParticlePosition ({position, speed} as particle) =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Time.every (second / 1000) Tick
+  Time.every (second / 60) Tick
 
 
 -- VIEW
@@ -142,7 +142,7 @@ particleView ({ position, waypointIndex } as particle) =
     px = toString <| getX position
     py = toString <| getY position
   in
-    circle [ cx px, cy py, r "2", stroke "#000000", fill "#777777" ] []
+    circle [ cx px, cy py, r "2", fill "#000000" ] []
 
 waypointView position =
   let
