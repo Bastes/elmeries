@@ -80,12 +80,10 @@ updateParticlesWaypointIndex waypoints particles = List.map (updateParticleWaypo
 updateParticleWaypointIndex : List Waypoint -> Particle -> Particle
 updateParticleWaypointIndex waypoints ({position, waypointIndex} as particle) =
   let
-    maybeWaypoint      = get waypointIndex <| fromList waypoints
-    maybeWaypointIndex = maybeWaypoint `andThen` \waypoint ->
-      case (distance waypoint position) < 10.0 of
-        True  -> Just <| (waypointIndex + 1) % (List.length waypoints)
-        False -> Just waypointIndex
-    newWaypointIndex = withDefault 0 maybeWaypointIndex
+    waypoint = waypointOf waypoints particle
+    newWaypointIndex = case (distance waypoint position) < 10.0 of
+      True  -> (waypointIndex + 1) % (List.length waypoints)
+      False -> waypointIndex
   in
     { particle | waypointIndex= newWaypointIndex }
 
@@ -95,15 +93,18 @@ updateParticlesSpeed waypoints particles = List.map (updateParticleSpeed waypoin
 updateParticleSpeed : List Waypoint -> Particle -> Particle
 updateParticleSpeed waypoints ({position, speed, waypointIndex} as particle) =
   let
-    maybeWaypoint = get waypointIndex <| fromList waypoints
-    maybeSpeed    = maybeWaypoint `andThen` \waypoint -> Just
-                                                      <| limitSpeed 5
-                                                      <| add (scale 0.99 speed)
-                                                      <| scale 0.1
-                                                      <| direction waypoint position
-    newSpeed      = withDefault speed maybeSpeed
+    waypoint = waypointOf waypoints particle
+    newSpeed = limitSpeed 5
+            <| add (scale 0.99 speed)
+            <| scale 0.1
+            <| direction waypoint position
   in
     { particle | speed= newSpeed }
+
+waypointOf : List Waypoint -> Particle -> Waypoint
+waypointOf waypoints { waypointIndex } = withDefault (vec2 0 0)
+                                      <| get waypointIndex
+                                      <| fromList waypoints
 
 limitSpeed : Float -> Vec2 -> Vec2
 limitSpeed max speed =
