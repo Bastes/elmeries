@@ -1,7 +1,7 @@
 import Html exposing (Html)
 import Html.App as App
-import Svg exposing (..)
-import Svg.Attributes exposing (viewBox, width, height, cx, cy, r, fill)
+import Svg exposing (svg, circle, node, line)
+import Svg.Attributes exposing (viewBox, width, height, cx, cy, x1, x2, y1, y2, r, stroke, fill)
 import Time exposing (Time, second)
 import Math.Vector2 exposing (Vec2, vec2, add, sub, getX, getY, normalize, scale, distance, direction)
 import Array exposing (get, fromList)
@@ -98,16 +98,12 @@ updateParticleSpeed waypoints ({position, speed, waypointIndex} as particle) =
     maybeWaypoint = get waypointIndex <| fromList waypoints
     maybeSpeed    = maybeWaypoint `andThen` \waypoint -> Just
                                                       <| limitSpeed 5
-                                                      <| applyGravity (vec2 500 500) 0.05 position
                                                       <| add (scale 0.99 speed)
                                                       <| scale 0.1
                                                       <| direction waypoint position
     newSpeed      = withDefault speed maybeSpeed
   in
     { particle | speed= newSpeed }
-
-applyGravity : Vec2 -> Float -> Vec2 -> Vec2 -> Vec2
-applyGravity c f p s = direction c p |> scale f |> add s
 
 limitSpeed : Float -> Vec2 -> Vec2
 limitSpeed max speed =
@@ -141,16 +137,21 @@ view ({ particles, waypoints } as model) =
     svg [ viewBox "0 0 1000 1000", width "1000px", height "1000px" ]
       (waypointViews ++ particleViews)
 
-particleView ({ position, waypointIndex } as particle) =
+particleView ({ position, speed, waypointIndex } as particle) =
   let
+    tip = sub position <| scale 2 speed
     px = toString <| getX position
     py = toString <| getY position
+    tx = toString <| getX tip
+    ty = toString <| getY tip
   in
-    circle [ cx px, cy py, r "2", fill "#000000" ] []
+    node "g" [] [ line   [ x1 px, x2 tx, y1 py, y2 ty, stroke "#ffdd00" ] []
+                , circle [ cx px, cy py, r "2", fill "#000000" ] []
+                ]
 
 waypointView position =
   let
     px = toString <| getX position
     py = toString <| getY position
   in
-    circle [ cx px, cy py, r "2", fill "#ff0000" ] []
+    circle [ cx px, cy py, r "2", fill "#007700" ] []
