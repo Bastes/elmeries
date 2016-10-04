@@ -31,12 +31,10 @@ type alias Model    = { particles: List Particle
 init : (Model, Cmd Msg)
 init =
   let
-      waypoints = [ vec2 500 100
-                  , vec2 600 200
-                  , vec2 400 400
-                  , vec2 600 600
-                  , vec2 400 800
-                  , vec2 500 900
+      waypoints = [ vec2 700 200
+                  , vec2 300 400
+                  , vec2 700 600
+                  , vec2 300 800
                   ]
       particles = List.foldr (++) [] <| List.map (\y -> List.map ((\y x ->
         { position=      vec2 (300 + 40 * x) (300 + 40 * y)
