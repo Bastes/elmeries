@@ -98,12 +98,16 @@ updateParticleSpeed waypoints ({position, speed, waypointIndex} as particle) =
     maybeWaypoint = get waypointIndex <| fromList waypoints
     maybeSpeed    = maybeWaypoint `andThen` \waypoint -> Just
                                                       <| limitSpeed 5
+                                                      <| applyGravity (vec2 500 500) 0.05 position
                                                       <| add (scale 0.99 speed)
                                                       <| scale 0.1
                                                       <| direction waypoint position
     newSpeed      = withDefault speed maybeSpeed
   in
     { particle | speed= newSpeed }
+
+applyGravity : Vec2 -> Float -> Vec2 -> Vec2 -> Vec2
+applyGravity c f p s = direction c p |> scale f |> add s
 
 limitSpeed : Float -> Vec2 -> Vec2
 limitSpeed max speed =
