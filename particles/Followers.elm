@@ -73,7 +73,7 @@ update msg ({ particles, waypoints } as model) =
           newParticles = particles
                       |> updateParticlesWaypointIndex waypoints
                       |> updateParticlesPosition
-                      |> updateParticlesSpeed waypoints
+                      |> attractParticlesTo waypoints
       in
         ( { model | particles= newParticles }
         , Cmd.none
@@ -86,17 +86,19 @@ updateParticleWaypointIndex : List Waypoint -> Particle -> Particle
 updateParticleWaypointIndex waypoints ({position, waypointIndex} as particle) =
   let
     waypoint = waypointOf waypoints particle
-    newWaypointIndex = case (distance waypoint position) < 10.0 of
-      True  -> (waypointIndex + 1) % (List.length waypoints)
-      False -> waypointIndex
+    newWaypointIndex =
+      if (distance waypoint position) < 10.0 then
+        (waypointIndex + 1) % (List.length waypoints)
+      else
+        waypointIndex
   in
     { particle | waypointIndex= newWaypointIndex }
 
-updateParticlesSpeed : List Waypoint -> List Particle -> List Particle
-updateParticlesSpeed waypoints particles = List.map (updateParticleSpeed waypoints) particles
+attractParticlesTo : List Waypoint -> List Particle -> List Particle
+attractParticlesTo waypoints particles = List.map (attractParticleTo waypoints) particles
 
-updateParticleSpeed : List Waypoint -> Particle -> Particle
-updateParticleSpeed waypoints ({position, speed, waypointIndex} as particle) =
+attractParticleTo : List Waypoint -> Particle -> Particle
+attractParticleTo waypoints ({position, speed, waypointIndex} as particle) =
   let
     waypoint = waypointOf waypoints particle
     newSpeed = limitSpeed 5
