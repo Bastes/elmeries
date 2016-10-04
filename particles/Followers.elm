@@ -31,14 +31,17 @@ type alias Model    = { particles: List Particle
 init : (Model, Cmd Msg)
 init =
   let
-      waypoints = List.foldl (\n r -> r ++
-        [ (rotateAround (vec2 500 500)     ((n * 2) * pi / 7) <| vec2 500 750)
-        , (rotateAround (vec2 500 500) ((1 + n * 2) * pi / 7) <| vec2 500 900)
-        ]) [] [0..6]
+      waypoints = [ vec2 500 100
+                  , vec2 600 200
+                  , vec2 400 400
+                  , vec2 600 600
+                  , vec2 400 800
+                  , vec2 500 900
+                  ]
       particles = List.foldr (++) [] <| List.map (\y -> List.map ((\y x ->
         { position=      vec2 (300 + 40 * x) (300 + 40 * y)
         , speed=         vec2 0 0
-        , waypointIndex= (round (10 * y + x)) % List.length waypoints
+        , waypointIndex= 0
         }) y) [0..10]) [0..10]
   in
      ( { particles= particles
@@ -134,7 +137,7 @@ subscriptions model =
 -- VIEW
 
 view : Model -> Html Msg
-view ({ particles, waypoints } as model) =
+view {particles, waypoints} =
   let
     particleViews = List.map particleView particles
     waypointViews = List.map waypointView waypoints
@@ -142,17 +145,12 @@ view ({ particles, waypoints } as model) =
     svg [ viewBox "0 0 1000 1000", width "1000px", height "1000px" ]
       (waypointViews ++ particleViews)
 
-particleView ({ position, speed, waypointIndex } as particle) =
+particleView {position, speed} =
   let
-    tip = sub position <| scale 2 speed
     px = toString <| getX position
     py = toString <| getY position
-    tx = toString <| getX tip
-    ty = toString <| getY tip
   in
-    node "g" [] [ line   [ x1 px, x2 tx, y1 py, y2 ty, stroke "#ffdd00" ] []
-                , circle [ cx px, cy py, r "2", fill "#000000" ] []
-                ]
+    circle [ cx px, cy py, r "2", fill "#000000" ] []
 
 waypointView position =
   let
