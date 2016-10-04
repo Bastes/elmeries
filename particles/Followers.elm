@@ -35,7 +35,11 @@ init =
         [ (rotateAround (vec2 500 500)     ((n * 2) * pi / 7) <| vec2 500 750)
         , (rotateAround (vec2 500 500) ((1 + n * 2) * pi / 7) <| vec2 500 900)
         ]) [] [0..6]
-      particles = List.foldr (++) [] <| List.map (\y -> List.map ((\y x -> {position= vec2 (300 + 40 * x) (300 + 40 * y), speed= vec2 0 0, waypointIndex= 0}) y) [0..10]) [0..10]
+      particles = List.foldr (++) [] <| List.map (\y -> List.map ((\y x ->
+        { position=      vec2 (300 + 40 * x) (300 + 40 * y)
+        , speed=         vec2 0 0
+        , waypointIndex= (round (10 * y + x)) % List.length waypoints
+        }) y) [0..10]) [0..10]
   in
      ( { particles= particles
        , waypoints= waypoints
