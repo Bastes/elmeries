@@ -1,7 +1,7 @@
 import Html exposing (Html)
 import Html.App as App
 import Svg exposing (..)
-import Svg.Attributes exposing (viewBox, width, height, cx, cy, r, fill)
+import Svg.Attributes exposing (viewBox, width, height, cx, cy, r, fill, stroke)
 import Time exposing (Time, second)
 import Math.Vector2 exposing (Vec2, vec2, add, sub, getX, getY, normalize, scale, distance, direction)
 import Array exposing (get, fromList)
@@ -31,8 +31,10 @@ type alias Model    = { particles: List Particle
 init : (Model, Cmd Msg)
 init =
   let
-      waypoints = List.map (\n -> rotateAround (vec2 500 500) (n * 2 * pi / 7) <| vec2 500 900) [0..6]
-               ++ List.map (\n -> rotateAround (vec2 500 500) (n * 2 * pi / 7) <| vec2 500 700) [0..6]
+      waypoints = List.foldl (\n r -> r ++
+        [ (rotateAround (vec2 500 500)     ((n * 2) * pi / 7) <| vec2 500 750)
+        , (rotateAround (vec2 500 500) ((1 + n * 2) * pi / 7) <| vec2 500 900)
+        ]) [] [0..6]
       particles = List.foldr (++) [] <| List.map (\y -> List.map ((\y x -> {position= vec2 (300 + 40 * x) (300 + 40 * y), speed= vec2 0 0, waypointIndex= 0}) y) [0..10]) [0..10]
   in
      ( { particles= particles
@@ -140,11 +142,11 @@ particleView ({ position, waypointIndex } as particle) =
     px = toString <| getX position
     py = toString <| getY position
   in
-    circle [ cx px, cy py, r "2", fill "#000000" ] []
+    circle [ cx px, cy py, r "2", stroke "#000000", fill "#777777" ] []
 
 waypointView position =
   let
     px = toString <| getX position
     py = toString <| getY position
   in
-    circle [ cx px, cy py, r "2", fill "#eeeeee" ] []
+    circle [ cx px, cy py, r "2", fill "#ff0000" ] []
