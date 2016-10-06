@@ -1,19 +1,20 @@
 import Html exposing (Html)
 import Html.App as App
 import Svg exposing (svg, circle, node, line)
-import Svg.Attributes exposing (viewBox, width, height, cx, cy, x1, x2, y1, y2, r, stroke, fill)
+import Svg.Attributes exposing (viewBox, width, height, cx, cy, x1, x2, y1, y2, r, stroke, fill, style)
+import Window
+import Task
 import Time exposing (Time, second)
 import Math.Vector2 exposing (Vec2, vec2, add, sub, getX, getY, normalize, scale, distance, direction)
 import Array exposing (get, fromList)
 import Maybe exposing (withDefault, andThen)
 
-main =
-  App.program
-    { init = init
-    , view = view
-    , update = update
-    , subscriptions = subscriptions
-    }
+main = App.program
+  { init          = init
+  , view          = view
+  , update        = update
+  , subscriptions = subscriptions
+  }
 
 
 -- MODEL
@@ -25,31 +26,16 @@ type alias Particle = { position: Vec2
                       }
 type alias Model    = { particles: List Particle
                       , waypoints: List Waypoint
+                      , screen:    (Int, Int)
                       }
 
-imgWidth  = 1000
-imgHeight =  900
-
-
 init : (Model, Cmd Msg)
-init =
-  let
-      waypoints = [ vec2 (imgWidth * 0.7) (imgHeight * 0.2)
-                  , vec2 (imgWidth * 0.3) (imgHeight * 0.4)
-                  , vec2 (imgWidth * 0.7) (imgHeight * 0.6)
-                  , vec2 (imgWidth * 0.3) (imgHeight * 0.8)
-                  ]
-      particles = List.foldr (++) [] <| List.map (\y -> List.map ((\y x ->
-        { position=      vec2 (imgWidth * 0.5 - 200 + 40 * x) (imgHeight * 0.5 - 200 + 40 * y)
-        , speed=         vec2 0 0
-        , waypointIndex= 0
-        }) y) [0..10]) [0..10]
-  in
-     ( { particles= particles
-       , waypoints= waypoints
-       }
-     , Cmd.none
-     )
+init = ( { particles= [] , waypoints= [], screen= (0, 0) }
+       , Task.perform (\_ -> WindowResize { width= 0, height= 0 }) (\dimentions -> WindowInit dimentions) Window.size
+       )
+
+
+-- TOOLING
 
 rotate : Float -> Vec2 -> Vec2
 rotate a v =
@@ -63,10 +49,12 @@ rotate a v =
 rotateAround : Vec2 -> Float -> Vec2 -> Vec2
 rotateAround c a = add c << rotate a << sub c
 
+
 -- UPDATE
 
 type Msg = Tick Time
-
+         | WindowInit   { width: Int, height: Int }
+         | WindowResize { width: Int, height: Int }
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg ({ particles, waypoints } as model) =
@@ -78,7 +66,26 @@ update msg ({ particles, waypoints } as model) =
                       |> updateParticlesPosition
                       |> attractParticlesTo waypoints
       in
-        ( { model | particles= newParticles }
+        ( { model | particles= newParticles }, Cmd.none )
+    WindowResize { width, height } ->
+        ( { model | screen= (width, height) }, Cmd.none )
+    WindowInit { width, height } ->
+      let
+        w = toFloat width
+        h = toFloat height
+      in
+        ( { particles= List.foldr (++) [] <| List.map (\y -> List.map ((\y x ->
+            { position=      vec2 (w * 0.5 - 200 + 40 * x) (h * 0.5 - 200 + 40 * y)
+            , speed=         vec2 0 0
+            , waypointIndex= 0
+            }) y) [0..10]) [0..10]
+          , waypoints= [ vec2 (w * 0.7) (h * 0.2)
+                       , vec2 (w * 0.3) (h * 0.4)
+                       , vec2 (w * 0.7) (h * 0.6)
+                       , vec2 (w * 0.3) (h * 0.8)
+                       ]
+          , screen= (width, height)
+          }
         , Cmd.none
         )
 
@@ -113,7 +120,7 @@ attractParticleTo waypoints ({position, speed, waypointIndex} as particle) =
     { particle | speed= newSpeed }
 
 waypointOf : List Waypoint -> Particle -> Waypoint
-waypointOf waypoints { waypointIndex } = withDefault (vec2 (imgWidth * 0.5) (imgHeight * 0.5))
+waypointOf waypoints { waypointIndex } = withDefault (vec2 500 500)
                                       <| get waypointIndex
                                       <| fromList waypoints
 
@@ -136,19 +143,23 @@ updateParticlePosition ({position, speed} as particle) =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Time.every (second / 60) Tick
+  Sub.batch [ Time.every (second / 60) Tick
+            , Window.resizes WindowResize
+            ]
 
 
 -- VIEW
 
 view : Model -> Html Msg
-view {particles, waypoints} =
+view {particles, waypoints, screen} =
   let
     particleViews = List.map particleView particles
     waypointViews = List.map waypointView waypoints
+    (w, h) = screen
+    svgViewBox = viewBox <| "0 0 " ++ (toString w) ++ " " ++ (toString h)
+    svgStyle   = style "position: fixed; top: 0; left: 0; width: 100%; height: 100%;"
   in
-    svg [ viewBox <| "0 0 " ++ (toString imgWidth) ++ " " ++ (toString imgHeight), width ((toString imgWidth) ++ "px"), height ((toString imgHeight) ++ "px") ]
-      (waypointViews ++ particleViews)
+    svg [ svgViewBox, svgStyle ] (waypointViews ++ particleViews)
 
 particleView {position, speed} =
   let
