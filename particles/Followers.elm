@@ -68,7 +68,9 @@ update msg ({ particles, waypoints } as model) =
       in
         ( { model | particles= newParticles }, Cmd.none )
     WindowResize { width, height } ->
-        ( { model | screen= (width, height) }, Cmd.none )
+      ( { model | waypoints= initWaypoints { width= width, height= height }
+                , screen= (width, height) }
+      , Cmd.none )
     WindowInit { width, height } ->
       let
         w = toFloat width
@@ -79,15 +81,36 @@ update msg ({ particles, waypoints } as model) =
             , speed=         vec2 0 0
             , waypointIndex= 0
             }) y) [0..10]) [0..10]
-          , waypoints= [ vec2 (w * 0.7) (h * 0.2)
-                       , vec2 (w * 0.3) (h * 0.4)
-                       , vec2 (w * 0.7) (h * 0.6)
-                       , vec2 (w * 0.3) (h * 0.8)
-                       ]
+          , waypoints= initWaypoints { width= width, height= height }
           , screen= (width, height)
           }
         , Cmd.none
         )
+
+initWaypoints { width, height } =
+  let
+    w = toFloat width
+    h = toFloat height
+  in
+    [ vec2 (w * 0.1) (h * 0.3)
+    , vec2 (w * 0.2) (h * 0.7)
+    , vec2 (w * 0.3) (h * 0.3)
+    , vec2 (w * 0.4) (h * 0.7)
+    , vec2 (w * 0.5) (h * 0.3)
+    , vec2 (w * 0.6) (h * 0.7)
+    , vec2 (w * 0.7) (h * 0.3)
+    , vec2 (w * 0.8) (h * 0.7)
+    , vec2 (w * 0.9) (h * 0.3)
+    , vec2 (w * 0.9) (h * 0.7)
+    , vec2 (w * 0.8) (h * 0.3)
+    , vec2 (w * 0.7) (h * 0.7)
+    , vec2 (w * 0.6) (h * 0.3)
+    , vec2 (w * 0.5) (h * 0.7)
+    , vec2 (w * 0.4) (h * 0.3)
+    , vec2 (w * 0.3) (h * 0.7)
+    , vec2 (w * 0.2) (h * 0.3)
+    , vec2 (w * 0.1) (h * 0.7)
+    ]
 
 updateParticlesWaypointIndex : List Waypoint -> List Particle -> List Particle
 updateParticlesWaypointIndex waypoints particles = List.map (updateParticleWaypointIndex waypoints) particles
