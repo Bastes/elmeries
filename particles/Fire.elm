@@ -103,17 +103,22 @@ update msg ({ origin, particles } as model) =
 
 moveParticles : List Particle -> List Particle
 moveParticles particles =
-  List.map moveParticle particles
+  List.map (moveParticle << flyUp) particles
+
+flyUp : Particle -> Particle
+flyUp = addWind (vec2 0 -0.01)
+
+addWind : Vec2 -> Particle -> Particle
+addWind wind ({ speed } as particle) =
+  { particle | speed = normalize <| add speed wind }
 
 moveParticle : Particle -> Particle
 moveParticle ({ position, speed } as particle) =
-  { particle | position = add position speed
-             , speed    = normalize <| add speed (vec2 0 -0.003)
-  }
+  { particle | position = add position speed }
 
 trashOldParticles : List Particle -> List Particle
 trashOldParticles particles =
-  if List.length particles >= 100 then
+  if List.length particles >= 50 then
     withDefault [] (List.tail particles)
   else
     particles
