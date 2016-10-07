@@ -1,7 +1,7 @@
 import Html exposing (Html)
 import Html.App as App
-import Svg exposing (svg, circle, node, line, rect)
-import Svg.Attributes exposing (viewBox, width, height, cx, cy, x, y, x1, x2, y1, y2, r, stroke, fill, style)
+import Svg exposing (svg, circle, node, line, rect, radialGradient, stop, defs)
+import Svg.Attributes exposing (viewBox, width, height, cx, cy, x, y, x1, x2, y1, y2, r, stroke, fill, style, id, offset, stopColor, stopOpacity)
 import Window
 import Task
 import Random
@@ -70,10 +70,10 @@ update msg ({ origin, particles } as model) =
     Tick time ->
       let
         newParticles = particles
-                    |> trashOldParticles
+                    |> trashOldParticles time
                     |> moveParticles
         newCmd =
-          if List.all (olderThan (time - second / 10)) particles then
+          if List.all (olderThan (time - second / 5)) particles then
             Random.generate (Spawn time) (Random.int -90 90)
           else
             Cmd.none
@@ -116,9 +116,9 @@ moveParticle : Particle -> Particle
 moveParticle ({ position, speed } as particle) =
   { particle | position = add position speed }
 
-trashOldParticles : List Particle -> List Particle
-trashOldParticles particles =
-  if List.length particles >= 50 then
+trashOldParticles : Time -> List Particle -> List Particle
+trashOldParticles time particles =
+  if List.any (olderThan (time - 7 * second)) particles  then
     withDefault [] (List.tail particles)
   else
     particles
@@ -140,23 +140,26 @@ subscriptions model =
 view : Model -> Html Msg
 view {particles, origin, screen} =
   let
-    particleViews = List.map (particleView origin screen  0 "50") particles
-                 ++ List.map (particleView origin screen 10 "40") particles
-                 ++ List.map (particleView origin screen 20 "30") particles
-                 ++ List.map (particleView origin screen 30 "20") particles
-                 ++ List.map (particleView origin screen 40 "10") particles
+    particleGradient = radialGradient [id "particleGradient"]
+      [ stop [offset   "0%", stopColor "#ffaa00", stopOpacity "1" ] []
+      , stop [offset  "25%", stopColor "#ff7700", stopOpacity "0.5" ] []
+      , stop [offset  "50%", stopColor "#ff7700", stopOpacity "0.25" ] []
+      , stop [offset "100%", stopColor "#ff7700", stopOpacity "0" ] []
+      ]
+    d = defs [] [particleGradient]
+    particleViews = List.map (particleView origin screen) particles
     px = toString <| getX screen
     py = toString <| getY screen
     svgViewBox = viewBox <| "0 0 " ++ px ++ " " ++ py
     svgStyle   = style "position: fixed; top: 0; left: 0; width: 100%; height: 100%;"
   in
     svg [ svgViewBox, svgStyle ]
-        ((rect [x "0", y "0", width px, height py, fill "#000000"] []) :: particleViews)
+        (d :: (rect [x "0", y "0", width px, height py, fill "#000000"] []) :: particleViews)
 
-particleView origin screen hue radius {position, speed} =
+particleView origin screen {position, speed} =
   let
-    strength = 1 - (distance origin position) / (getY screen - getY origin)
+    strength = withDefault 0 (List.maximum [0, 1 - (distance origin position) / (getY screen - getY origin)])
     px = toString <| getX position
     py = toString <| getY position
   in
-    circle [ cx px, cy py, r radius, fill (colorToCssHsla (hsla (degrees hue) strength (0.5 * strength) (0.5 * strength))) ] []
+    circle [ cx px, cy py, r (toString (strength * 100)), fill "url(#particleGradient)", style ("opacity: " ++ (toString strength) ++ ";") ] []
