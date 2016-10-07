@@ -1,7 +1,7 @@
 import Html exposing (Html)
 import Html.App as App
-import Svg exposing (svg, circle, node, line)
-import Svg.Attributes exposing (viewBox, width, height, cx, cy, x1, x2, y1, y2, r, stroke, fill, style)
+import Svg exposing (svg, circle, node, line, rect)
+import Svg.Attributes exposing (viewBox, width, height, cx, cy, x, y, x1, x2, y1, y2, r, stroke, fill, style)
 import Window
 import Task
 import Random
@@ -9,8 +9,8 @@ import Time exposing (Time, second)
 import Math.Vector2 exposing (Vec2, vec2, add, sub, getX, getY, normalize, scale, distance, direction)
 import Array exposing (get, fromList)
 import Maybe exposing (withDefault, andThen)
-import Color exposing (hsl)
-import Color.Convert exposing (colorToHex)
+import Color exposing (hsla)
+import Color.Convert exposing (colorToCssHsla)
 
 main = App.program
   { init          = init
@@ -135,18 +135,23 @@ subscriptions model =
 view : Model -> Html Msg
 view {particles, origin, screen} =
   let
-    particleViews = List.map (particleView origin screen) particles
+    particleViews = List.map (particleView origin screen  0 "50") particles
+                 ++ List.map (particleView origin screen 10 "40") particles
+                 ++ List.map (particleView origin screen 20 "30") particles
+                 ++ List.map (particleView origin screen 30 "20") particles
+                 ++ List.map (particleView origin screen 40 "10") particles
     px = toString <| getX screen
     py = toString <| getY screen
     svgViewBox = viewBox <| "0 0 " ++ px ++ " " ++ py
     svgStyle   = style "position: fixed; top: 0; left: 0; width: 100%; height: 100%;"
   in
-    svg [ svgViewBox, svgStyle ] particleViews
+    svg [ svgViewBox, svgStyle ]
+        ((rect [x "0", y "0", width px, height py, fill "#000000"] []) :: particleViews)
 
-particleView origin screen {position, speed} =
+particleView origin screen hue radius {position, speed} =
   let
     strength = 1 - (distance origin position) / (getY screen - getY origin)
     px = toString <| getX position
     py = toString <| getY position
   in
-    circle [ cx px, cy py, r "2", fill (colorToHex (hsl (degrees 0) strength 0.5)) ] []
+    circle [ cx px, cy py, r radius, fill (colorToCssHsla (hsla (degrees hue) strength (0.5 * strength) (0.5 * strength))) ] []
