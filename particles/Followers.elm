@@ -79,7 +79,7 @@ update msg ({ particles, waypoints } as model) =
         ( { particles= List.foldr (++) [] <| List.map (\y -> List.map ((\y x ->
             { position=      vec2 (w * 0.5 - 200 + 40 * x) (h * 0.5 - 200 + 40 * y)
             , speed=         vec2 0 0
-            , waypointIndex= 0
+            , waypointIndex= 9 * (round (10 * y + x) % 2)
             }) y) [0..10]) [0..10]
           , waypoints= initWaypoints { width= width, height= height }
           , screen= (width, height)
