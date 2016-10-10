@@ -1,7 +1,7 @@
 import Html exposing (Html)
 import Html.App as App
-import Svg exposing (svg, circle, node, line)
-import Svg.Attributes exposing (viewBox, width, height, cx, cy, x1, x2, y1, y2, r, stroke, fill, style)
+import Svg exposing (svg, circle, node, line, radialGradient, stop, defs)
+import Svg.Attributes exposing (viewBox, width, height, cx, cy, x1, x2, y1, y2, r, stroke, fill, style, id, offset, stopColor, stopOpacity)
 import Window
 import Task
 import Time exposing (Time, second)
@@ -176,24 +176,23 @@ subscriptions model =
 view : Model -> Html Msg
 view {particles, waypoints, screen} =
   let
+    particleGradient = radialGradient [id "particleGradient"]
+      [ stop [offset   "0%", stopColor "#ffeeff", stopOpacity "1" ] []
+      , stop [offset  "25%", stopColor "#770077", stopOpacity "0.5" ] []
+      , stop [offset  "50%", stopColor "#770077", stopOpacity "0.25" ] []
+      , stop [offset "100%", stopColor "#770077", stopOpacity "0" ] []
+      ]
+    d = defs [] [particleGradient]
     particleViews = List.map particleView particles
-    waypointViews = List.map waypointView waypoints
     (w, h) = screen
     svgViewBox = viewBox <| "0 0 " ++ (toString w) ++ " " ++ (toString h)
     svgStyle   = style "position: fixed; top: 0; left: 0; width: 100%; height: 100%;"
   in
-    svg [ svgViewBox, svgStyle ] (waypointViews ++ particleViews)
+    svg [ svgViewBox, svgStyle ] (d :: particleViews)
 
 particleView {position, speed} =
   let
     px = toString <| getX position
     py = toString <| getY position
   in
-    circle [ cx px, cy py, r "2", fill "#000000" ] []
-
-waypointView position =
-  let
-    px = toString <| getX position
-    py = toString <| getY position
-  in
-    circle [ cx px, cy py, r "2", fill "#007700" ] []
+    circle [ cx px, cy py, r "20", fill "url(#particleGradient)" ] []
