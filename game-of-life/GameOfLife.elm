@@ -1,4 +1,4 @@
-module GameOfLife exposing (Cell(..), step, fate, neighboursCount)
+module GameOfLife exposing (Cell(..), World, step, fate, neighboursCount)
 
 import List exposing (map, sum, length, filter, drop, take, indexedMap)
 import Array exposing (fromList, get)
