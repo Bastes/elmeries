@@ -1,14 +1,15 @@
 import Html exposing (Html)
 import Html.App as App
-import Svg exposing (svg, rect)
-import Svg.Attributes exposing (viewBox, width, height, x, y, fill, style)
+import Svg exposing (svg, rect, g, polygon)
+import Svg.Attributes exposing (viewBox, width, height, x, y, fill, style, points)
 import Svg.Events     exposing (onClick, onMouseDown, onMouseOver, onMouseUp)
 import Window
 import Task
 import Time exposing (Time, second)
-import List exposing (indexedMap, repeat, map, filterMap, concat, take)
+import List exposing (indexedMap, repeat, map, filterMap, concat, take, intersperse)
 import Maybe exposing (withDefault)
 import Random
+import String
 
 import GameOfLife exposing (..)
 
@@ -115,15 +116,36 @@ view { screen, world, pause } =
 pauseToggleButton : ScreenSize -> Bool -> Html Msg
 pauseToggleButton screen pause =
   let
-    fillColor = if pause then "#ff0000" else "#00ff00"
+    bw = cellWidth * 2
+    bx = screen.width  - bw
+    by = screen.height - bw
+    symbol = case pause of
+      False -> [ rect [x (toPix (bx + (bw * 20) // 100)), y (toPix (by + (bw * 20) // 100)), width (toPix ((bw * 20) // 100)), height (toPix ((bw * 60) // 100)), fill "#ffffff"] []
+               , rect [x (toPix (bx + (bw * 60) // 100)), y (toPix (by + (bw * 20) // 100)), width (toPix ((bw * 20) // 100)), height (toPix ((bw * 60) // 100)), fill "#ffffff"] []
+               ]
+      True  -> [ polygon [ points (toPoints [ [bx + ((bw * 20) // 100), by + ((bw * 20) // 100)]
+                                            , [bx + ((bw * 20) // 100), by + ((bw * 80) // 100)]
+                                            , [bx + ((bw * 80) // 100), by + ((bw * 50) // 100)]
+                                            ])
+                         , fill "#ffffff"]
+                         []
+               ]
   in
-    rect [ x (toPix (screen.width  - (cellWidth * 2)))
-         , y (toPix (screen.height - (cellWidth * 2)))
-         , width  (toPix (cellWidth * 2))
-         , height (toPix (cellWidth * 2))
-         , fill fillColor
-         , onClick TogglePlay
-         ] []
+    g [onClick TogglePlay] <|
+      ( rect [ x <| toPix bx
+             , y <| toPix by
+             , width  (toPix (cellWidth * 2))
+             , height (toPix (cellWidth * 2))
+             , fill "#777777"
+             ]
+             []
+      ) :: symbol
+
+toPoints : List (List Int) -> String
+toPoints = (joinWith " ") << map (joinWith ",") << map (map toString)
+
+joinWith : String -> List String -> String
+joinWith s = String.concat << intersperse s
 
 
 worldView : World -> List (Html Msg)
