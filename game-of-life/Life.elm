@@ -8,6 +8,7 @@ import Task
 import Time exposing (Time, second)
 import List exposing (indexedMap, repeat, map, filterMap, concat, take)
 import Maybe exposing (withDefault)
+import Random
 
 import GameOfLife exposing (..)
 
@@ -34,7 +35,7 @@ init = ( { world=    [[]]
          , pause=    True
          , dragging= Nothing
          }
-       , Task.perform (\_ -> WindowResize { width= 0, height= 0 }) (\dimentions -> WindowInit dimentions) Window.size
+       , Task.perform (\_ -> WindowInit { width= 0, height= 0 }) (\dimentions -> WindowInit dimentions) Window.size
        )
 
 
@@ -47,17 +48,25 @@ type Msg = Tick Time
          | SlideStop
          | WindowInit   ScreenSize
          | WindowResize ScreenSize
+         | BoardInit    World
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg ({ world, pause, dragging } as model) =
   case msg of
     Tick _ -> if pause then (model, Cmd.none) else ({ model | world = step world }, Cmd.none)
-    SlideStart y x c -> update (SlideHover y x (invertCell c)) { model | dragging= Just (invertCell c) }
+    SlideStart y x c -> ({ model | dragging= Just (invertCell c), world= setCell y x (invertCell c) world }, Cmd.none)
     SlideHover y x c -> ({ model | world= setCell y x (withDefault c dragging) world }, Cmd.none)
     SlideStop  -> ({ model | dragging= Nothing }, Cmd.none)
     TogglePlay -> ({ model | pause= not pause }, Cmd.none)
-    WindowInit   screen -> ({ model | screen= screen, world= windowInitWorld screen }, Cmd.none)
+    WindowInit   screen ->
+      ({ model | screen= screen, world= windowInitWorld screen }
+      , Random.generate BoardInit (Random.list (screen.height // cellWidth) (Random.list (screen.width // cellWidth) randomCell))
+      )
     WindowResize screen -> ({ model | screen= screen }, Cmd.none)
+    BoardInit w -> ({ model | world= w}, Cmd.none)
+
+randomCell : Random.Generator Cell
+randomCell = Random.map (\n -> if n == 1 then Live else Dead) (Random.int 0 1)
 
 setCell : Int -> Int -> Cell -> World -> World
 setCell y x c = indexedMap (\cy -> indexedMap (\cx cc -> if (cy /= y || cx /= x) then cc else c))
