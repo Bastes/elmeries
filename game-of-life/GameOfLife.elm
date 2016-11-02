@@ -1,4 +1,4 @@
-module GameOfLife exposing (Cell(..), World, step, fate, neighboursCount)
+module GameOfLife exposing (Cell(..), World, step, fate, neighboursCount, toggle)
 
 import List exposing (map, sum, length, filter, drop, take, indexedMap)
 import Array exposing (fromList, get)
@@ -27,6 +27,14 @@ fate n c =
     2 -> c
     3 -> Live
     _ -> Dead
+
+toggle : Int -> Int -> World -> World
+toggle y x = indexedMap (\cy -> indexedMap (\cx c -> if (cy /= y || cx /= x) then c else toggleCell c))
+
+toggleCell : Cell -> Cell
+toggleCell c = case c of
+  Dead -> Live
+  Live -> Dead
 
 countLives : World -> Int
 countLives = map (filter ((==) Live) >> length) >> sum

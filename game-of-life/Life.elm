@@ -51,14 +51,6 @@ update msg ({ world, pause } as model) = case msg of
   WindowInit   screen -> ({ model | screen= screen, world= windowInitWorld screen }, Cmd.none)
   WindowResize screen -> ({ model | screen= screen }, Cmd.none)
 
-toggle : Int -> Int -> World -> World
-toggle y x = indexedMap (\cy -> indexedMap (\cx c -> if (cy /= y || cx /= x) then c else toggleCell c))
-
-toggleCell : Cell -> Cell
-toggleCell c = case c of
-  Dead -> Live
-  Live -> Dead
-
 windowInitWorld : ScreenSize -> World
 windowInitWorld screen =
   let
@@ -91,19 +83,27 @@ view { screen, world, pause } =
   let
     svgViewBox  = viewBox <| "0 0 " ++ (toString screen.width) ++ " " ++ (toString screen.height)
     svgStyle    = style "position: fixed; top: 0; left: 0; width: 100%; height: 100%;"
-    pauseToggle = rect [ x (toPix (screen.width  - (cellWidth * 2)))
-                       , y (toPix (screen.height - (cellWidth * 2)))
-                       , width  (toPix (cellWidth * 2))
-                       , height (toPix (cellWidth * 2))
-                       , fill "#ff0000"
-                       , onClick TogglePlay
-                       ] []
   in
-    svg [svgViewBox, svgStyle] ((worldView world) ++ [pauseToggle])
+    svg [svgViewBox, svgStyle] ((worldView world) ++ [pauseToggleButton screen pause])
+
+pauseToggleButton : ScreenSize -> Bool -> Html Msg
+pauseToggleButton screen pause =
+  let
+    fillColor = if pause then "#ff0000" else "#00ff00"
+  in
+    rect [ x (toPix (screen.width  - (cellWidth * 2)))
+         , y (toPix (screen.height - (cellWidth * 2)))
+         , width  (toPix (cellWidth * 2))
+         , height (toPix (cellWidth * 2))
+         , fill fillColor
+         , onClick TogglePlay
+         ] []
+
 
 worldView : World -> List (Html Msg)
 worldView world = world |> indexedMap (\y -> indexedMap (\x c-> cellView y x c))
                         |> concat
+
 cellView : Int -> Int -> Cell -> Html Msg
 cellView cy cx c =
   let

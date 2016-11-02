@@ -127,6 +127,38 @@ suite = describe "the GameOfLife module"
       \neighbours ->
         fate neighbours Dead |> Expect.equal Dead
     ]
+  , describe "toggle"
+    [ test "toggles the one cell from Dead to Alive" <|
+      \() ->
+        let
+          worldBefore =
+            [ [Live, Dead, Dead]
+            , [Dead, Live, Dead]
+            , [Dead, Dead, Live]
+            ]
+          worldAfter =
+            [ [Live, Live, Dead]
+            , [Dead, Live, Dead]
+            , [Dead, Dead, Live]
+            ]
+        in
+          toggle 0 1 worldBefore |> Expect.equal worldAfter
+    , test "toggles the one cell from Alive to Dead" <|
+      \() ->
+        let
+          worldBefore =
+            [ [Live, Dead, Dead]
+            , [Dead, Live, Dead]
+            , [Dead, Dead, Live]
+            ]
+          worldAfter =
+            [ [Live, Dead, Dead]
+            , [Dead, Live, Dead]
+            , [Dead, Dead, Dead]
+            ]
+        in
+          toggle 2 2 worldBefore |> Expect.equal worldAfter
+    ]
   ]
 
 main : Program Never
