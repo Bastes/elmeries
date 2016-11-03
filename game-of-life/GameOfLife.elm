@@ -1,4 +1,4 @@
-module GameOfLife exposing (Cell(..), World, step, fate, neighboursCount, toggle)
+module GameOfLife exposing (Cell(..), World, step, fate, neighboursCount, setCell, toggle, toggleCell)
 
 import List exposing (map, sum, length, filter, drop, take, indexedMap)
 import Array exposing (fromList, get)
@@ -30,6 +30,9 @@ fate n c =
 
 toggle : Int -> Int -> World -> World
 toggle y x = indexedMap (\cy -> indexedMap (\cx c -> if (cy /= y || cx /= x) then c else toggleCell c))
+
+setCell : Int -> Int -> Cell -> World -> World
+setCell y x c = indexedMap (\cy -> indexedMap (\cx cc -> if (cy /= y || cx /= x) then cc else c))
 
 toggleCell : Cell -> Cell
 toggleCell c = case c of

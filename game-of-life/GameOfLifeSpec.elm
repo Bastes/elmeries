@@ -107,6 +107,12 @@ suite = describe "the GameOfLife module"
         in
           neighboursCount world 2 2 |> Expect.equal 2
     ]
+  , describe "toggleCell"
+    [ test "a dead cell is called back to life" <|
+      \() -> toggleCell Dead |> Expect.equal Live
+    , test "a live cell is killed" <|
+      \() -> toggleCell Live |> Expect.equal Dead
+    ]
   , describe "fate"
     [ fuzz (intRange 0 1) "the fate of a live cell with zero to one neighbour is to die" <|
       \neighbours ->
@@ -126,6 +132,58 @@ suite = describe "the GameOfLife module"
     , fuzz (intRange 4 8) "the fate of a dead cell with 4 to 8 neighbours is to stay dead still" <|
       \neighbours ->
         fate neighbours Dead |> Expect.equal Dead
+    ]
+  , describe "setCell"
+    [ test "sets the one cell to Alive" <|
+      \() ->
+        let
+          worldBefore =
+            [ [Live, Dead, Dead]
+            , [Dead, Live, Dead]
+            , [Dead, Dead, Live]
+            ]
+          worldAfter =
+            [ [Live, Dead, Dead]
+            , [Dead, Live, Live]
+            , [Dead, Dead, Live]
+            ]
+        in
+          setCell 1 2 Live worldBefore |> Expect.equal worldAfter
+    , test "keeps the one cell to Alive" <|
+      \() ->
+        let
+          world =
+            [ [Live, Dead, Dead]
+            , [Dead, Live, Live]
+            , [Dead, Dead, Live]
+            ]
+        in
+          setCell 0 0 Live world |> Expect.equal world
+    , test "sets the one cell to Dead" <|
+      \() ->
+        let
+          worldBefore =
+            [ [Live, Dead, Dead]
+            , [Dead, Live, Dead]
+            , [Dead, Dead, Live]
+            ]
+          worldAfter =
+            [ [Live, Dead, Dead]
+            , [Dead, Dead, Dead]
+            , [Dead, Dead, Live]
+            ]
+        in
+          setCell 1 1 Dead worldBefore |> Expect.equal worldAfter
+    , test "keeps the one cell to Dead" <|
+      \() ->
+        let
+          world =
+            [ [Live, Dead, Dead]
+            , [Dead, Live, Dead]
+            , [Dead, Dead, Live]
+            ]
+        in
+          setCell 0 2 Dead world |> Expect.equal world
     ]
   , describe "toggle"
     [ test "toggles the one cell from Dead to Alive" <|

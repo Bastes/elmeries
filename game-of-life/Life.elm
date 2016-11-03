@@ -55,7 +55,7 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg ({ world, pause, dragging } as model) =
   case msg of
     Tick _ -> if pause then (model, Cmd.none) else ({ model | world = step world }, Cmd.none)
-    SlideStart y x c -> ({ model | dragging= Just (invertCell c), world= setCell y x (invertCell c) world }, Cmd.none)
+    SlideStart y x c -> ({ model | dragging= Just (toggleCell c), world= setCell y x (toggleCell c) world }, Cmd.none)
     SlideHover y x c -> ({ model | world= setCell y x (withDefault c dragging) world }, Cmd.none)
     SlideStop  -> ({ model | dragging= Nothing }, Cmd.none)
     TogglePlay -> ({ model | pause= not pause }, Cmd.none)
@@ -68,15 +68,6 @@ update msg ({ world, pause, dragging } as model) =
 
 randomCell : Random.Generator Cell
 randomCell = Random.map (\n -> if n == 1 then Live else Dead) (Random.int 0 1)
-
-setCell : Int -> Int -> Cell -> World -> World
-setCell y x c = indexedMap (\cy -> indexedMap (\cx cc -> if (cy /= y || cx /= x) then cc else c))
-
-invertCell : Cell -> Cell
-invertCell c =
-    case c of
-      Dead -> Live
-      Live -> Dead
 
 windowInitWorld : ScreenSize -> World
 windowInitWorld screen =
@@ -111,14 +102,12 @@ view { screen, world, pause } =
     svgViewBox  = viewBox <| "0 0 " ++ (toString screen.width) ++ " " ++ (toString screen.height)
     svgStyle    = style "cursor: pointer; position: fixed; top: 0; left: 0; width: 100%; height: 100%;"
   in
-    svg [svgViewBox, svgStyle] ((worldView world) ++ [pauseToggleButton screen pause])
+    svg [svgViewBox, svgStyle] ((worldView world) ++ [pauseToggleButton 0 0 screen pause])
 
-pauseToggleButton : ScreenSize -> Bool -> Html Msg
-pauseToggleButton screen pause =
+pauseToggleButton : Int -> Int -> ScreenSize -> Bool -> Html Msg
+pauseToggleButton bx by screen pause =
   let
     bw = cellWidth * 2
-    bx = screen.width  - bw
-    by = screen.height - bw
     symbol = case pause of
       False -> [ rect [x (toPix (bx + (bw * 20) // 100)), y (toPix (by + (bw * 20) // 100)), width (toPix ((bw * 20) // 100)), height (toPix ((bw * 60) // 100)), fill "#ffffff"] []
                , rect [x (toPix (bx + (bw * 60) // 100)), y (toPix (by + (bw * 20) // 100)), width (toPix ((bw * 20) // 100)), height (toPix ((bw * 60) // 100)), fill "#ffffff"] []
