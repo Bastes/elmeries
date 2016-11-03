@@ -154,7 +154,7 @@ pauseToggleButton bx by screen pause =
     g [onClick TogglePlay] (frame :: symbol)
 
 toPoints : List (List Int) -> String
-toPoints = (joinWith " ") << map (joinWith ",") << map (map toString)
+toPoints = joinWith " " << map (joinWith "," << map toString)
 
 joinWith : String -> List String -> String
 joinWith s = String.concat << intersperse s
