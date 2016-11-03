@@ -1,4 +1,4 @@
-module Die exposing (Model, Msg(Roll), init, update, subscriptions, view)
+module Die exposing (Model, Msg(..), init, update, subscriptions, view)
 
 import Html exposing (..)
 import Html.Attributes exposing (style)
