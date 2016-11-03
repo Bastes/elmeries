@@ -159,9 +159,11 @@ toPoints = joinWith " " << map (joinWith "," << map toString)
 joinWith : String -> List String -> String
 joinWith s = String.concat << intersperse s
 
+indexedMap2 : (Int -> Int -> a -> b) -> List (List a) -> List (List b)
+indexedMap2 f = indexedMap (\y -> indexedMap (\x a -> f y x a))
 
 worldView : World -> List (Html Msg)
-worldView world = world |> indexedMap (\y -> indexedMap (\x c-> cellView y x c))
+worldView world = world |> indexedMap2 cellView
                         |> concat
 
 cellView : Int -> Int -> Cell -> Html Msg
