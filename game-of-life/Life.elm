@@ -96,6 +96,8 @@ subscriptions model =
 
 -- VIEW
 
+cellWidth = 20
+
 view : Model -> Html Msg
 view { screen, world, pause } =
   let
@@ -108,27 +110,48 @@ pauseToggleButton : Int -> Int -> ScreenSize -> Bool -> Html Msg
 pauseToggleButton bx by screen pause =
   let
     bw = cellWidth * 2
+    frame =
+      rect
+      [ x <| toString bx
+      , y <| toString by
+      , width  (toString (cellWidth * 2))
+      , height (toString (cellWidth * 2))
+      , fill "#777777"
+      ] []
+    pauseSymbol =
+      [ rect
+        [ x (bx + (bw * 20) // 100 |> toString)
+        , y (by + (bw * 20) // 100 |> toString)
+        , width  ((bw * 20) // 100 |> toString)
+        , height ((bw * 60) // 100 |> toString)
+        , fill "#ffffff"
+        ] []
+        , rect
+        [ x (bx + (bw * 60) // 100 |> toString)
+        , y (by + (bw * 20) // 100 |> toString)
+        , width  ((bw * 20) // 100 |> toString)
+        , height ((bw * 60) // 100 |> toString)
+        , fill "#ffffff"
+        ] []
+      ]
+    playSymbol =
+      [ polygon
+        [ points <| toPoints
+          [ [ bx + ((bw * 20) // 100)
+            , by + ((bw * 20) // 100)]
+          , [ bx + ((bw * 20) // 100)
+            , by + ((bw * 80) // 100)]
+          , [ bx + ((bw * 80) // 100)
+            , by + ((bw * 50) // 100)]
+          ]
+        , fill "#ffffff"
+        ] []
+      ]
     symbol = case pause of
-      False -> [ rect [x (toPix (bx + (bw * 20) // 100)), y (toPix (by + (bw * 20) // 100)), width (toPix ((bw * 20) // 100)), height (toPix ((bw * 60) // 100)), fill "#ffffff"] []
-               , rect [x (toPix (bx + (bw * 60) // 100)), y (toPix (by + (bw * 20) // 100)), width (toPix ((bw * 20) // 100)), height (toPix ((bw * 60) // 100)), fill "#ffffff"] []
-               ]
-      True  -> [ polygon [ points (toPoints [ [bx + ((bw * 20) // 100), by + ((bw * 20) // 100)]
-                                            , [bx + ((bw * 20) // 100), by + ((bw * 80) // 100)]
-                                            , [bx + ((bw * 80) // 100), by + ((bw * 50) // 100)]
-                                            ])
-                         , fill "#ffffff"]
-                         []
-               ]
+      False -> pauseSymbol
+      True  -> playSymbol
   in
-    g [onClick TogglePlay] <|
-      ( rect [ x <| toPix bx
-             , y <| toPix by
-             , width  (toPix (cellWidth * 2))
-             , height (toPix (cellWidth * 2))
-             , fill "#777777"
-             ]
-             []
-      ) :: symbol
+    g [onClick TogglePlay] (frame :: symbol)
 
 toPoints : List (List Int) -> String
 toPoints = (joinWith " ") << map (joinWith ",") << map (map toString)
@@ -148,18 +171,13 @@ cellView cy cx c =
       Dead -> "#ffffff"
       Live -> "#000000"
   in
-    rect [ x (toPix (cx * cellWidth))
-         , y (toPix (cy * cellWidth))
-         , width  (toPix cellWidth)
-         , height (toPix cellWidth)
+    rect [ x (toString (cx * cellWidth))
+         , y (toString (cy * cellWidth))
+         , width  (toString cellWidth)
+         , height (toString cellWidth)
          , fill fillColor
          , onMouseDown (SlideStart cy cx c)
          , onMouseOver (SlideHover cy cx c)
          , onMouseUp   (SlideStop)
          ]
          []
-
-toPix : Int -> String
-toPix n = (toString n) ++ "px"
-
-cellWidth = 20
