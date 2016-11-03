@@ -136,7 +136,7 @@ pauseToggleButton bx by screen pause =
       ]
     playSymbol =
       [ polygon
-        [ points <| toPoints
+        [ toPoints
           [ [ bx + ((bw * 20) // 100)
             , by + ((bw * 20) // 100)]
           , [ bx + ((bw * 20) // 100)
@@ -153,8 +153,8 @@ pauseToggleButton bx by screen pause =
   in
     g [onClick TogglePlay] (frame :: symbol)
 
-toPoints : List (List Int) -> String
-toPoints = joinWith " " << map (joinWith "," << map toString)
+toPoints : List (List Int) -> Svg.Attribute msg
+toPoints = points << joinWith " " << map (joinWith "," << map toString)
 
 joinWith : String -> List String -> String
 joinWith s = String.concat << intersperse s
