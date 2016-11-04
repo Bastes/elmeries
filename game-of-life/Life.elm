@@ -23,21 +23,30 @@ main = App.program
 
 -- MODEL
 
-type alias ScreenSize = { width: Int, height: Int }
-type alias Model = { world:    World
-                   , screen:   ScreenSize
-                   , pause:    Bool
-                   , dragging: Maybe Cell
-                   }
+type alias ScreenSize =
+  { width:  Int
+  , height: Int
+  }
+
+type alias Model =
+  { world:    World
+  , screen:   ScreenSize
+  , pause:    Bool
+  , dragging: Maybe Cell
+  }
 
 init : (Model, Cmd Msg)
-init = ( { world=    [[]]
-         , screen=   { width= 0, height= 0 }
-         , pause=    True
-         , dragging= Nothing
-         }
-       , Task.perform (\_ -> WindowInit { width= 0, height= 0 }) (\dimentions -> WindowInit dimentions) Window.size
-       )
+init =
+  ( { world=    [[]]
+    , screen=   { width= 0, height= 0 }
+    , pause=    True
+    , dragging= Nothing
+    }
+  , Task.perform
+    (\_          -> WindowInit { width= 0, height= 0 })
+    (\dimentions -> WindowInit dimentions)
+    Window.size
+  )
 
 
 -- UPDATE
@@ -49,33 +58,60 @@ type Msg = Tick Time
          | SlideStop
          | WindowInit   ScreenSize
          | WindowResize ScreenSize
-         | BoardInit    World
+         | WorldInit    World
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg ({ world, pause, dragging } as model) =
   case msg of
-    Tick _ -> if pause then (model, Cmd.none) else ({ model | world = step world }, Cmd.none)
-    SlideStart y x c -> ({ model | dragging= Just (toggleCell c), world= setCell y x (toggleCell c) world }, Cmd.none)
-    SlideHover y x c -> ({ model | world= setCell y x (withDefault c dragging) world }, Cmd.none)
-    SlideStop  -> ({ model | dragging= Nothing }, Cmd.none)
-    TogglePlay -> ({ model | pause= not pause }, Cmd.none)
-    WindowInit   screen ->
-      ({ model | screen= screen, world= windowInitWorld screen }
-      , Random.generate BoardInit (Random.list (screen.height // cellWidth) (Random.list (screen.width // cellWidth) randomCell))
+    Tick _ ->
+      if pause then
+        (model, Cmd.none)
+      else
+        ({ model | world = step world }, Cmd.none)
+    SlideStart y x c ->
+      let
+        draggingCell = toggleCell c
+      in
+        ( { model
+          | dragging= Just draggingCell
+          , world=    setCell y x draggingCell world
+          }
+        , Cmd.none
+        )
+    SlideHover y x c ->
+      ( { model | world= setCell y x (withDefault c dragging) world }
+      , Cmd.none
       )
-    WindowResize screen -> ({ model | screen= screen }, Cmd.none)
-    BoardInit w -> ({ model | world= w}, Cmd.none)
+    SlideStop ->
+      ( { model | dragging= Nothing }
+      , Cmd.none
+      )
+    TogglePlay ->
+      ( { model | pause= not pause }
+      , Cmd.none
+      )
+    WindowInit screen ->
+      ( { model | screen= screen }
+      , generateRandomWorld screen
+      )
+    WindowResize screen ->
+      ( { model | screen= screen }
+      , Cmd.none
+      )
+    WorldInit w ->
+      ( { model | world= w }
+      , Cmd.none
+      )
 
-randomCell : Random.Generator Cell
-randomCell = Random.map (\n -> if n == 1 then Live else Dead) (Random.int 0 1)
-
-windowInitWorld : ScreenSize -> World
-windowInitWorld screen =
+generateRandomWorld : ScreenSize -> Cmd Msg
+generateRandomWorld screen =
   let
-    worldWidth  = screen.width  // cellWidth
-    worldHeight = screen.height // cellWidth
+    deadOrLive  = (\n -> if n == 1 then Live else Dead)
+    randomCell  = Random.map deadOrLive (Random.int 0 1)
+    randomLine  = Random.list (screen.width  // cellWidth) randomCell
+    randomWorld = Random.list (screen.height // cellWidth) randomLine
   in
-    repeat worldHeight (repeat worldWidth Dead)
+    Random.generate WorldInit randomWorld
 
 windowResizeWorld : ScreenSize -> World -> World
 windowResizeWorld screen world =
