@@ -148,10 +148,10 @@ pauseToggleButton bx by screen pause =
     bw = cellWidth * 2
     frame =
       rect
-      [ x <| toString bx
-      , y <| toString by
-      , width  (toString (cellWidth * 2))
-      , height (toString (cellWidth * 2))
+      [ x      (bx |> toString)
+      , y      (by |> toString)
+      , width  (bw |> toString)
+      , height (bw |> toString)
       , fill "#777777"
       ] []
     pauseSymbol =
@@ -174,11 +174,14 @@ pauseToggleButton bx by screen pause =
       [ polygon
         [ toPoints
           [ [ bx + ((bw * 20) // 100)
-            , by + ((bw * 20) // 100)]
+            , by + ((bw * 20) // 100)
+            ]
           , [ bx + ((bw * 20) // 100)
-            , by + ((bw * 80) // 100)]
+            , by + ((bw * 80) // 100)
+            ]
           , [ bx + ((bw * 80) // 100)
-            , by + ((bw * 50) // 100)]
+            , by + ((bw * 50) // 100)
+            ]
           ]
         , fill "#ffffff"
         ] []
@@ -209,13 +212,14 @@ cellView cy cx c =
       Dead -> "#ffffff"
       Live -> "#000000"
   in
-    rect [ x (toString (cx * cellWidth))
-         , y (toString (cy * cellWidth))
-         , width  (toString cellWidth)
-         , height (toString cellWidth)
-         , fill fillColor
-         , onMouseDown (SlideStart cy cx c)
-         , onMouseOver (SlideHover cy cx c)
-         , onMouseUp   (SlideStop)
-         ]
-         []
+    rect
+    [ x (toString (cx * cellWidth))
+    , y (toString (cy * cellWidth))
+    , width  (toString cellWidth)
+    , height (toString cellWidth)
+    , fill fillColor
+    , onMouseDown (SlideStart cy cx c)
+    , onMouseOver (SlideHover cy cx c)
+    , onMouseUp   (SlideStop)
+    ]
+    []
