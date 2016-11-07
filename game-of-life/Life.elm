@@ -1,4 +1,4 @@
-import Html exposing (Html)
+import Html exposing (Html, div)
 import Html.App as App
 import Svg exposing (svg, rect, g, polygon)
 import Svg.Attributes exposing (viewBox, width, height, x, y, fill, style, points)
@@ -140,7 +140,23 @@ view { screen, world, pause } =
     svgViewBox  = viewBox <| "0 0 " ++ (toString screen.width) ++ " " ++ (toString screen.height)
     svgStyle    = style "cursor: pointer; position: fixed; top: 0; left: 0; width: 100%; height: 100%;"
   in
-    svg [svgViewBox, svgStyle] ((worldView world) ++ [pauseToggleButton 0 0 screen pause])
+    div
+      []
+      [ worldView screen world
+      , controls { width= cellWidth * 2, height= cellWidth * 2 } pause
+      ]
+
+controls : ScreenSize -> Bool -> Html Msg
+controls screen pause =
+  let
+    width  = (toString screen.width)
+    height = (toString screen.height)
+    svgViewBox  =
+      viewBox <| "0 0 " ++ width ++ " " ++ height
+    svgStyle    =
+      style <| "cursor: pointer; position: fixed; top: 0; left: 0; width: " ++ width ++ "px; height: " ++ height ++ "px;"
+  in
+    svg [svgViewBox, svgStyle] [pauseToggleButton 0 0 screen pause]
 
 pauseToggleButton : Int -> Int -> ScreenSize -> Bool -> Html Msg
 pauseToggleButton bx by screen pause =
@@ -201,9 +217,20 @@ joinWith s = String.concat << intersperse s
 indexedMap2 : (Int -> Int -> a -> b) -> List (List a) -> List (List b)
 indexedMap2 f = indexedMap (\y -> indexedMap (\x a -> f y x a))
 
-worldView : World -> List (Html Msg)
-worldView world = world |> indexedMap2 cellView
-                        |> concat
+worldView : ScreenSize -> World -> Html Msg
+worldView screen world =
+  let
+    width  = (toString screen.width)
+    height = (toString screen.height)
+    svgViewBox =
+      viewBox <| "0 0 " ++ width ++ " " ++ height
+    svgStyle =
+      style <| "cursor: pointer; position: fixed; top: 0; left: 0; width: " ++ width ++ "px; height: " ++ height ++ "px;"
+    cells =
+      world |> indexedMap2 cellView
+            |> concat
+  in
+    svg [svgViewBox, svgStyle] cells
 
 cellView : Int -> Int -> Cell -> Html Msg
 cellView cy cx c =
