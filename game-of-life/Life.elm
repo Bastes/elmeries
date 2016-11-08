@@ -25,9 +25,12 @@ main = App.program
 
 -- MODEL
 
+type alias Height = Int
+type alias Width  = Int
+
 type alias Dimensions =
-  { width:  Int
-  , height: Int
+  { height: Height
+  , width:  Width
   }
 
 type alias Model =
@@ -53,14 +56,15 @@ init =
 
 -- UPDATE
 
-type Msg = Tick Time
-         | TogglePlay
-         | SlideStart Int Int Cell
-         | SlideHover Int Int Cell
-         | SlideStop
-         | WindowInit   Dimensions
-         | WindowResize Dimensions
-         | WorldInit    World
+type Msg
+    = Tick Time
+    | TogglePlay
+    | SlideStart Int Int Cell
+    | SlideHover Int Int Cell
+    | SlideStop
+    | WindowInit   Dimensions
+    | WindowResize Dimensions
+    | WorldInit    World
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg ({ world, pause, dragging } as model) =
@@ -140,7 +144,7 @@ view : Model -> Html Msg
 view { screen, world, pause } =
   div
     []
-    [ controls { width= cellWidth * 2, height= cellWidth * 2 } pause
+    [ controls (cellWidth * 2) pause
     , worldView { screen | height= screen.height - (cellWidth * 3) } world
     ]
 
@@ -156,11 +160,11 @@ svgOf screen =
   in
     svg [svgViewBox, svgStyle]
 
-controls : Dimensions -> Bool -> Html Msg
-controls screen pause =
-  svgOf
-    screen
-    [ pauseButton 0 0 (cellWidth * 2) pause TogglePlay ]
+controls : Height -> Bool -> Html Msg
+controls height pause =
+  div
+    []
+    [ pauseButton height pause TogglePlay ]
 
 indexedMap2 : (Int -> Int -> a -> b) -> List (List a) -> List (List b)
 indexedMap2 f = indexedMap (\y -> indexedMap (\x a -> f y x a))
