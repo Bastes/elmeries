@@ -12,6 +12,7 @@ type alias Width = Int
 type alias Y     = Int
 type alias X     = Int
 
+
 pauseButton : Width -> Pause -> msg -> Html msg
 pauseButton iWidth pause action =
   let

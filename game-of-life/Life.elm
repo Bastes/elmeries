@@ -40,6 +40,7 @@ type alias Model =
   , dragging: Maybe Cell
   }
 
+
 init : (Model, Cmd Msg)
 init =
   ( { world=    [[]]
@@ -65,6 +66,7 @@ type Msg
     | WindowInit   Dimensions
     | WindowResize Dimensions
     | WorldInit    World
+
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg ({ world, pause, dragging } as model) =
@@ -109,6 +111,7 @@ update msg ({ world, pause, dragging } as model) =
       , Cmd.none
       )
 
+
 generateRandomWorld : Dimensions -> Cmd Msg
 generateRandomWorld screen =
   let
@@ -119,6 +122,7 @@ generateRandomWorld screen =
   in
     Random.generate WorldInit randomWorld
 
+
 windowResizeWorld : Dimensions -> World -> World
 windowResizeWorld screen world =
   let
@@ -128,6 +132,7 @@ windowResizeWorld screen world =
     world |> take newWorldHeight
           |> map (take newWorldWidth)
 
+
 -- SUBSCRIPTIONS
 
 subscriptions : Model -> Sub Msg
@@ -136,9 +141,11 @@ subscriptions model =
             , Window.resizes WindowResize
             ]
 
+
 -- VIEW
 
 cellWidth = 20
+
 
 view : Model -> Html Msg
 view { screen, world, pause } =
@@ -147,6 +154,7 @@ view { screen, world, pause } =
     [ controls (cellWidth * 2) pause
     , worldView { screen | height= screen.height - (cellWidth * 3) } world
     ]
+
 
 svgOf : Dimensions -> List (Html Msg) -> Html Msg
 svgOf screen =
@@ -160,14 +168,17 @@ svgOf screen =
   in
     svg [svgViewBox, svgStyle]
 
+
 controls : Height -> Bool -> Html Msg
 controls height pause =
   div
     []
     [ pauseButton height pause TogglePlay ]
 
+
 indexedMap2 : (Int -> Int -> a -> b) -> List (List a) -> List (List b)
 indexedMap2 f = indexedMap (\y -> indexedMap (\x a -> f y x a))
+
 
 worldView : Dimensions -> World -> Html Msg
 worldView screen world =
@@ -177,6 +188,7 @@ worldView screen world =
             |> concat
   in
     svgOf screen cells
+
 
 cellView : Int -> Int -> Cell -> Html Msg
 cellView cy cx c =
