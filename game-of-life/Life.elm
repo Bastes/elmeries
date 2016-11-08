@@ -13,6 +13,8 @@ import String
 
 import GameOfLife exposing (..)
 
+import PauseButton exposing (pauseButton)
+
 main = App.program
   { init          = init
   , view          = view
@@ -23,14 +25,14 @@ main = App.program
 
 -- MODEL
 
-type alias ScreenSize =
+type alias Dimensions =
   { width:  Int
   , height: Int
   }
 
 type alias Model =
   { world:    World
-  , screen:   ScreenSize
+  , screen:   Dimensions
   , pause:    Bool
   , dragging: Maybe Cell
   }
@@ -56,8 +58,8 @@ type Msg = Tick Time
          | SlideStart Int Int Cell
          | SlideHover Int Int Cell
          | SlideStop
-         | WindowInit   ScreenSize
-         | WindowResize ScreenSize
+         | WindowInit   Dimensions
+         | WindowResize Dimensions
          | WorldInit    World
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -103,7 +105,7 @@ update msg ({ world, pause, dragging } as model) =
       , Cmd.none
       )
 
-generateRandomWorld : ScreenSize -> Cmd Msg
+generateRandomWorld : Dimensions -> Cmd Msg
 generateRandomWorld screen =
   let
     deadOrLive  = (\n -> if n == 1 then Live else Dead)
@@ -113,7 +115,7 @@ generateRandomWorld screen =
   in
     Random.generate WorldInit randomWorld
 
-windowResizeWorld : ScreenSize -> World -> World
+windowResizeWorld : Dimensions -> World -> World
 windowResizeWorld screen world =
   let
     newWorldWidth  = screen.width  // cellWidth
@@ -136,101 +138,41 @@ cellWidth = 20
 
 view : Model -> Html Msg
 view { screen, world, pause } =
-  let
-    svgViewBox  = viewBox <| "0 0 " ++ (toString screen.width) ++ " " ++ (toString screen.height)
-    svgStyle    = style "cursor: pointer; position: fixed; top: 0; left: 0; width: 100%; height: 100%;"
-  in
-    div
-      []
-      [ worldView screen world
-      , controls { width= cellWidth * 2, height= cellWidth * 2 } pause
-      ]
+  div
+    []
+    [ controls { width= cellWidth * 2, height= cellWidth * 2 } pause
+    , worldView { screen | height= screen.height - (cellWidth * 3) } world
+    ]
 
-controls : ScreenSize -> Bool -> Html Msg
-controls screen pause =
+svgOf : Dimensions -> List (Html Msg) -> Html Msg
+svgOf screen =
   let
     width  = (toString screen.width)
     height = (toString screen.height)
     svgViewBox  =
       viewBox <| "0 0 " ++ width ++ " " ++ height
     svgStyle    =
-      style <| "cursor: pointer; position: fixed; top: 0; left: 0; width: " ++ width ++ "px; height: " ++ height ++ "px;"
+      style <| "cursor: pointer; width: " ++ width ++ "px; height: " ++ height ++ "px;"
   in
-    svg [svgViewBox, svgStyle] [pauseToggleButton 0 0 screen pause]
+    svg [svgViewBox, svgStyle]
 
-pauseToggleButton : Int -> Int -> ScreenSize -> Bool -> Html Msg
-pauseToggleButton bx by screen pause =
-  let
-    bw = cellWidth * 2
-    frame =
-      rect
-      [ x      (bx |> toString)
-      , y      (by |> toString)
-      , width  (bw |> toString)
-      , height (bw |> toString)
-      , fill "#777777"
-      ] []
-    pauseSymbol =
-      [ rect
-        [ x (bx + (bw * 20) // 100 |> toString)
-        , y (by + (bw * 20) // 100 |> toString)
-        , width  ((bw * 20) // 100 |> toString)
-        , height ((bw * 60) // 100 |> toString)
-        , fill "#ffffff"
-        ] []
-        , rect
-        [ x (bx + (bw * 60) // 100 |> toString)
-        , y (by + (bw * 20) // 100 |> toString)
-        , width  ((bw * 20) // 100 |> toString)
-        , height ((bw * 60) // 100 |> toString)
-        , fill "#ffffff"
-        ] []
-      ]
-    playSymbol =
-      [ polygon
-        [ toPoints
-          [ [ bx + ((bw * 20) // 100)
-            , by + ((bw * 20) // 100)
-            ]
-          , [ bx + ((bw * 20) // 100)
-            , by + ((bw * 80) // 100)
-            ]
-          , [ bx + ((bw * 80) // 100)
-            , by + ((bw * 50) // 100)
-            ]
-          ]
-        , fill "#ffffff"
-        ] []
-      ]
-    symbol = case pause of
-      False -> pauseSymbol
-      True  -> playSymbol
-  in
-    g [onClick TogglePlay] (frame :: symbol)
-
-toPoints : List (List Int) -> Svg.Attribute msg
-toPoints = points << joinWith " " << map (joinWith "," << map toString)
-
-joinWith : String -> List String -> String
-joinWith s = String.concat << intersperse s
+controls : Dimensions -> Bool -> Html Msg
+controls screen pause =
+  svgOf
+    screen
+    [ pauseButton 0 0 (cellWidth * 2) pause TogglePlay ]
 
 indexedMap2 : (Int -> Int -> a -> b) -> List (List a) -> List (List b)
 indexedMap2 f = indexedMap (\y -> indexedMap (\x a -> f y x a))
 
-worldView : ScreenSize -> World -> Html Msg
+worldView : Dimensions -> World -> Html Msg
 worldView screen world =
   let
-    width  = (toString screen.width)
-    height = (toString screen.height)
-    svgViewBox =
-      viewBox <| "0 0 " ++ width ++ " " ++ height
-    svgStyle =
-      style <| "cursor: pointer; position: fixed; top: 0; left: 0; width: " ++ width ++ "px; height: " ++ height ++ "px;"
     cells =
       world |> indexedMap2 cellView
             |> concat
   in
-    svg [svgViewBox, svgStyle] cells
+    svgOf screen cells
 
 cellView : Int -> Int -> Cell -> Html Msg
 cellView cy cx c =
