@@ -30,31 +30,31 @@ pauseButton by bx bw pause action =
       ] []
     pauseSymbol =
       [ rect
-        [ y (by + (bw * 20) // 100 |> toString)
-        , x (bx + (bw * 20) // 100 |> toString)
-        , width  ((bw * 20) // 100 |> toString)
-        , height ((bw * 60) // 100 |> toString)
+        [ y (by + (bw * 2) // 10 |> toString)
+        , x (bx + (bw * 2) // 10 |> toString)
+        , width  ((bw * 2) // 10 |> toString)
+        , height ((bw * 6) // 10 |> toString)
         , fill "#ffffff"
         ] []
         , rect
-        [ y (by + (bw * 20) // 100 |> toString)
-        , x (bx + (bw * 60) // 100 |> toString)
-        , height ((bw * 60) // 100 |> toString)
-        , width  ((bw * 20) // 100 |> toString)
+        [ y (by + (bw * 2) // 10 |> toString)
+        , x (bx + (bw * 6) // 10 |> toString)
+        , height ((bw * 6) // 10 |> toString)
+        , width  ((bw * 2) // 10 |> toString)
         , fill "#ffffff"
         ] []
       ]
     playSymbol =
       [ polygon
         [ toPoints
-          [ [ by + ((bw * 20) // 100)
-            , bx + ((bw * 20) // 100)
+          [ [ by + ((bw * 2) // 10)
+            , bx + ((bw * 2) // 10)
             ]
-          , [ by + ((bw * 80) // 100)
-            , bx + ((bw * 20) // 100)
+          , [ by + ((bw * 8) // 10)
+            , bx + ((bw * 2) // 10)
             ]
-          , [ by + ((bw * 50) // 100)
-            , bx + ((bw * 80) // 100)
+          , [ by + ((bw * 5) // 10)
+            , bx + ((bw * 8) // 10)
             ]
           ]
         , fill "#ffffff"
