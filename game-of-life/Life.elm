@@ -13,6 +13,7 @@ import String
 
 import GameOfLife exposing (..)
 
+import Board
 import PauseButton exposing (pauseButton)
 
 main = App.program
@@ -30,29 +31,36 @@ type alias Width  = Int
 
 type alias Dimensions =
   { height: Height
-  , width:  Width
+  , width: Width
   }
 
 type alias Model =
-  { world:    World
-  , screen:   Dimensions
-  , pause:    Bool
-  , dragging: Maybe Cell
+  { board: Board.Model
+  , screen: Dimensions
+  , pause: Bool
   }
 
 
 init : (Model, Cmd Msg)
 init =
-  ( { world=    [[]]
-    , screen=   { width= 0, height= 0 }
-    , pause=    True
-    , dragging= Nothing
-    }
-  , Task.perform
-    (\_          -> WindowInit { width= 0, height= 0 })
-    (\dimentions -> WindowInit dimentions)
-    Window.size
-  )
+  let
+    (board, boardCmd) =
+      Board.init
+    windowInit =
+      Task.perform
+        (\_ -> WindowInit { width= 0, height= 0 })
+        (\dimentions -> WindowInit dimentions)
+        Window.size
+  in
+    ( { board= board
+      , screen= { width= 0, height= 0 }
+      , pause= True
+      }
+    , Cmd.batch
+      [ windowInit
+      , boardCmd
+      ]
+    )
 
 
 -- UPDATE
@@ -60,54 +68,44 @@ init =
 type Msg
     = Tick Time
     | TogglePlay
-    | SlideStart Int Int Cell
-    | SlideHover Int Int Cell
-    | SlideStop
-    | WindowInit   Dimensions
+    | BoardMsg Board.Msg
+    | WindowInit Dimensions
     | WindowResize Dimensions
-    | WorldInit    World
+    | WorldInit World
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
-update msg ({ world, pause, dragging } as model) =
+update msg ({ board, pause } as model) =
   case msg of
     Tick _ ->
       if pause then
         (model, Cmd.none)
       else
-        ({ model | world = step world }, Cmd.none)
-    SlideStart y x c ->
-      let
-        draggingCell = toggleCell c
-      in
-        ( { model
-          | dragging= Just draggingCell
-          , world=    setCell y x draggingCell world
-          }
+        ( { model | board= { board | world= step board.world } }
         , Cmd.none
         )
-    SlideHover y x c ->
-      ( { model | world= setCell y x (withDefault c dragging) world }
-      , Cmd.none
-      )
-    SlideStop ->
-      ( { model | dragging= Nothing }
-      , Cmd.none
-      )
+    BoardMsg msg ->
+      let
+        (board, boardCmds) = Board.update msg board
+      in
+        ( { model | board= board }
+        , Cmd.map BoardMsg boardCmds
+        )
     TogglePlay ->
       ( { model | pause= not pause }
       , Cmd.none
       )
     WindowInit screen ->
-      ( { model | screen= screen }
+      ( { model | screen= screen, board= { board | dimensions= (screen.height - (cellWidth * 3), screen.width) } }
       , generateRandomWorld screen
       )
     WindowResize screen ->
-      ( { model | screen= screen }
+      ( { model | screen= screen, board= { board | dimensions= (screen.height - (cellWidth * 3), screen.width) } }
+
       , Cmd.none
       )
-    WorldInit w ->
-      ( { model | world= w }
+    WorldInit world ->
+      ( { model | board= { board | world= world } }
       , Cmd.none
       )
 
@@ -123,22 +121,13 @@ generateRandomWorld screen =
     Random.generate WorldInit randomWorld
 
 
-windowResizeWorld : Dimensions -> World -> World
-windowResizeWorld screen world =
-  let
-    newWorldWidth  = screen.width  // cellWidth
-    newWorldHeight = screen.height // cellWidth
-  in
-    world |> take newWorldHeight
-          |> map (take newWorldWidth)
-
-
 -- SUBSCRIPTIONS
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch [ Time.every (second / 10) Tick
             , Window.resizes WindowResize
+            , Sub.map BoardMsg (Board.subscriptions model.board)
             ]
 
 
@@ -148,63 +137,15 @@ cellWidth = 20
 
 
 view : Model -> Html Msg
-view { screen, world, pause } =
+view { screen, board, pause } =
   div
     []
     [ controls (cellWidth * 2) pause
-    , worldView { screen | height= screen.height - (cellWidth * 3) } world
+    , App.map BoardMsg (Board.view board)
     ]
-
-
-svgOf : Dimensions -> List (Html Msg) -> Html Msg
-svgOf screen =
-  let
-    width  = (toString screen.width)
-    height = (toString screen.height)
-    svgViewBox  =
-      viewBox <| "0 0 " ++ width ++ " " ++ height
-    svgStyle    =
-      style <| "cursor: pointer; width: " ++ width ++ "px; height: " ++ height ++ "px;"
-  in
-    svg [svgViewBox, svgStyle]
-
 
 controls : Height -> Bool -> Html Msg
 controls height pause =
   div
     []
     [ pauseButton height pause TogglePlay ]
-
-
-indexedMap2 : (Int -> Int -> a -> b) -> List (List a) -> List (List b)
-indexedMap2 f = indexedMap (\y -> indexedMap (\x a -> f y x a))
-
-
-worldView : Dimensions -> World -> Html Msg
-worldView screen world =
-  let
-    cells =
-      world |> indexedMap2 cellView
-            |> concat
-  in
-    svgOf screen cells
-
-
-cellView : Int -> Int -> Cell -> Html Msg
-cellView cy cx c =
-  let
-    fillColor = case c of
-      Dead -> "#ffffff"
-      Live -> "#000000"
-  in
-    rect
-    [ x (toString (cx * cellWidth))
-    , y (toString (cy * cellWidth))
-    , width  (toString cellWidth)
-    , height (toString cellWidth)
-    , fill fillColor
-    , onMouseDown (SlideStart cy cx c)
-    , onMouseOver (SlideHover cy cx c)
-    , onMouseUp   (SlideStop)
-    ]
-    []
