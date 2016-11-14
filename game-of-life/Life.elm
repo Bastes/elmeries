@@ -15,6 +15,7 @@ import GameOfLife exposing (..)
 
 import Board
 import PauseButton exposing (pauseButton)
+import NextButton exposing (nextButton)
 
 main = App.program
   { init          = init
@@ -68,6 +69,7 @@ init =
 type Msg
     = Tick Time
     | TogglePlay
+    | NextFrame
     | BoardMsg Board.Msg
     | WindowInit Dimensions
     | WindowResize Dimensions
@@ -95,6 +97,10 @@ update msg ({ board, pause } as model) =
       ( { model | pause= not pause }
       , Cmd.none
       )
+    NextFrame ->
+      ( { model | board= { board | world= step board.world } }
+      , Cmd.none
+      )
     WindowInit screen ->
       ( { model | screen= screen, board= { board | dimensions= (screen.height - (cellWidth * 3), screen.width) } }
       , generateRandomWorld screen
@@ -115,8 +121,8 @@ generateRandomWorld screen =
   let
     deadOrLive  = (\n -> if n == 1 then Live else Dead)
     randomCell  = Random.map deadOrLive (Random.int 0 1)
-    randomLine  = Random.list (screen.width  // cellWidth) randomCell
-    randomWorld = Random.list (screen.height // cellWidth) randomLine
+    randomLine  = Random.list ((screen.width // cellWidth)) randomCell
+    randomWorld = Random.list ((screen.height // cellWidth) - 3) randomLine
   in
     Random.generate WorldInit randomWorld
 
@@ -148,4 +154,6 @@ controls : Height -> Bool -> Html Msg
 controls height pause =
   div
     []
-    [ pauseButton height pause TogglePlay ]
+    [ pauseButton height pause TogglePlay
+    , nextButton height pause NextFrame
+    ]
