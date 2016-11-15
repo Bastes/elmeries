@@ -83,9 +83,12 @@ update msg ({ board, pause } as model) =
       if pause then
         (model, Cmd.none)
       else
-        ( { model | board= { board | world= step board.world } }
-        , Cmd.none
-        )
+        let
+          (board, boardCmds) = Board.update Board.Step board
+        in
+          ( { model | board= board }
+          , Cmd.map BoardMsg boardCmds
+          )
     BoardMsg msg ->
       let
         (board, boardCmds) = Board.update msg board
@@ -98,9 +101,12 @@ update msg ({ board, pause } as model) =
       , Cmd.none
       )
     NextFrame ->
-      ( { model | board= { board | world= step board.world } }
-      , Cmd.none
-      )
+      let
+        (board, boardCmds) = Board.update Board.Step board
+      in
+        ( { model | board= board }
+        , Cmd.map BoardMsg boardCmds
+        )
     WindowInit screen ->
       ( { model
         | screen= screen
@@ -116,9 +122,12 @@ update msg ({ board, pause } as model) =
       , Cmd.none
       )
     WorldInit world ->
-      ( { model | board= { board | world= world } }
-      , Cmd.none
-      )
+      let
+        (board, boardCmds) = Board.update (Board.InitWith world) board
+      in
+        ( { model | board= board }
+        , Cmd.map BoardMsg boardCmds
+        )
 
 
 generateRandomWorld : Dimensions -> Cmd Msg

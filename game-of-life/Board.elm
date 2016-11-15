@@ -4,9 +4,9 @@ import Html exposing (Html)
 import Svg exposing (svg, rect)
 import Svg.Attributes exposing (viewBox, style, width, height, x, y, fill)
 import Svg.Events exposing (onMouseDown, onMouseOver, onMouseUp)
-import List exposing (concat, indexedMap)
-import Maybe exposing (withDefault)
-import GameOfLife exposing (World, Cell(..), toggleCell, setCell)
+import List exposing (concat, indexedMap, head)
+import Maybe exposing (withDefault, andThen)
+import GameOfLife exposing (World, Cell(..), toggleCell, setCell, step)
 
 -- MODEL
 
@@ -16,7 +16,7 @@ type alias Height = Int
 type alias Dimensions = (Height, Width)
 
 type alias Model =
-  { world:      World
+  { worlds:     List World
   , dimensions: Dimensions
   , dragging:   Maybe Cell
   }
@@ -24,7 +24,7 @@ type alias Model =
 
 init : (Model, Cmd msg)
 init =
-    ( { world      = []
+    ( { worlds     = [[]]
       , dimensions = (0, 0)
       , dragging   = Nothing
       }
@@ -38,30 +38,55 @@ type Msg
     = SlideStart Int Int Cell
     | SlideHover Int Int Cell
     | SlideStop
+    | Step
+    | InitWith World
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
-update msg model =
+update msg ({ worlds } as model) =
   case msg of
     SlideStart y x c ->
       let
-        draggingCell = toggleCell c
-        dragging = Just draggingCell
-        world = setCell y x draggingCell model.world
+        draggingCell =
+          toggleCell c
+        dragging =
+          Just draggingCell
+        world =
+          worlds |> updateHeadWith (setCell y x draggingCell)
       in
-        ( { model | dragging= dragging, world= world }
+        ( { model | dragging= dragging, worlds= [world] }
         , Cmd.none
         )
     SlideHover y x c ->
-      ( { model
-        | world= setCell y x (withDefault c model.dragging) model.world
-        }
-      , Cmd.none
-      )
+      let
+        world =
+          worlds |> updateHeadWith (setCell y x (withDefault c model.dragging))
+      in
+        ( { model | worlds= [world] }
+        , Cmd.none
+        )
     SlideStop ->
       ( { model | dragging= Nothing }
       , Cmd.none
       )
+    Step ->
+      let
+        world =
+          worlds |> updateHeadWith step
+      in
+        ( { model | worlds= world :: model.worlds }
+        , Cmd.none
+        )
+    InitWith world ->
+      ( { model | worlds = [world] }
+      , Cmd.none
+      )
+
+
+updateHeadWith : (World -> World) -> List World -> World
+updateHeadWith update worlds =
+  head worlds `andThen` (Just << update) |> withDefault []
+
 
 -- SUBSCRIPTIONS
 
@@ -73,8 +98,10 @@ subscriptions _ =
 -- VIEW
 
 view : Model -> Html Msg
-view { world, dimensions } =
+view { worlds, dimensions } =
   let
+    world =
+      head worlds |> withDefault []
     (height, width) =
       dimensions
     boardHeight =
