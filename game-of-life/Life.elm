@@ -102,12 +102,17 @@ update msg ({ board, pause } as model) =
       , Cmd.none
       )
     WindowInit screen ->
-      ( { model | screen= screen, board= { board | dimensions= (screen.height - (cellWidth * 3), screen.width) } }
+      ( { model
+        | screen= screen
+        , board= { board | dimensions= (screen.height - controlsHeight - cellWidth, screen.width) }
+        }
       , generateRandomWorld screen
       )
     WindowResize screen ->
-      ( { model | screen= screen, board= { board | dimensions= (screen.height - (cellWidth * 3), screen.width) } }
-
+      ( { model
+        | screen= screen
+        , board= { board | dimensions= (screen.height - controlsHeight - cellWidth, screen.width) }
+        }
       , Cmd.none
       )
     WorldInit world ->
@@ -140,13 +145,14 @@ subscriptions model =
 -- VIEW
 
 cellWidth = 20
+controlsHeight = cellWidth * 2
 
 
 view : Model -> Html Msg
 view { screen, board, pause } =
   div
     []
-    [ controls (cellWidth * 2) pause
+    [ controls controlsHeight pause
     , App.map BoardMsg (Board.view board)
     ]
 
