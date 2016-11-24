@@ -14,7 +14,7 @@ import String
 import GameOfLife exposing (..)
 import Board
 import PauseButton exposing (pauseButton)
-import NextButton exposing (nextButton)
+import NextButton exposing (nextButton, prevButton)
 
 
 main =
@@ -80,6 +80,7 @@ init =
 type Msg
     = Tick Time
     | TogglePlay
+    | PrevFrame
     | NextFrame
     | BoardMsg Board.Msg
     | WindowInit Dimensions
@@ -115,6 +116,15 @@ update msg ({ board, pause } as model) =
             ( { model | pause = not pause }
             , Cmd.none
             )
+
+        PrevFrame ->
+            let
+                newBoard =
+                    { board | worlds = List.tail board.worlds |> withDefault [] }
+            in
+                ( { model | board = newBoard }
+                , Cmd.none
+                )
 
         NextFrame ->
             let
@@ -203,15 +213,20 @@ view : Model -> Html Msg
 view { screen, board, pause } =
     div
         []
-        [ controls controlsHeight pause
+        [ controls board controlsHeight pause
         , Html.map BoardMsg (Board.view board)
         ]
 
 
-controls : Height -> Bool -> Html Msg
-controls height pause =
-    div
-        []
-        [ pauseButton height pause TogglePlay
-        , nextButton height pause NextFrame
-        ]
+controls : Board.Model -> Height -> Bool -> Html Msg
+controls board height pause =
+    let
+        hasPrevious =
+          pause && (List.length board.worlds) > 1
+    in
+        div
+          []
+          [ prevButton height hasPrevious PrevFrame
+          , pauseButton height pause TogglePlay
+          , nextButton height pause NextFrame
+          ]
