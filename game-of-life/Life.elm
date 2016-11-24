@@ -13,8 +13,7 @@ import Random
 import String
 import GameOfLife exposing (..)
 import Board
-import PauseButton exposing (pauseButton)
-import NextButton exposing (nextButton, prevButton)
+import GolButtons exposing (pauseButton, nextButton, prevButton)
 
 
 main =
@@ -92,16 +91,13 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ({ board, pause } as model) =
     case msg of
         Tick _ ->
-            if pause then
-                ( model, Cmd.none )
-            else
-                let
-                    ( newBoard, boardCmds ) =
-                        Board.update Board.Step board
-                in
-                    ( { model | board = newBoard }
-                    , Cmd.map BoardMsg boardCmds
-                    )
+            let
+                ( newBoard, boardCmds ) =
+                    Board.update Board.Step board
+            in
+                ( { model | board = newBoard }
+                , Cmd.map BoardMsg boardCmds
+                )
 
         BoardMsg msg ->
             let
@@ -189,12 +185,19 @@ generateRandomWorld screen =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.batch
-        [ Time.every (second / 10) Tick
-        , Window.resizes WindowResize
-        , Sub.map BoardMsg (Board.subscriptions model.board)
-        ]
+subscriptions {board, pause} =
+    let
+        tick =
+          if pause then
+            Sub.none
+          else
+            Time.every (second / 10) Tick
+    in
+        Sub.batch
+            [ tick
+            , Window.resizes WindowResize
+            , Sub.map BoardMsg (Board.subscriptions board)
+            ]
 
 
 
