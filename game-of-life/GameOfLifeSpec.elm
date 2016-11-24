@@ -6,6 +6,7 @@ import Test.Runner.Html
 import Fuzz exposing (intRange)
 import GameOfLife exposing (..)
 
+
 main =
     [ describe "the GameOfLife module"
         [ describe "step"
@@ -227,5 +228,5 @@ main =
             ]
         ]
     ]
-    |> concat
-    |> Test.Runner.Html.run
+        |> concat
+        |> Test.Runner.Html.run

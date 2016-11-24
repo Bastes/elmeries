@@ -222,11 +222,11 @@ controls : Board.Model -> Height -> Bool -> Html Msg
 controls board height pause =
     let
         hasPrevious =
-          pause && (List.length board.worlds) > 1
+            pause && (List.length board.worlds) > 1
     in
         div
-          []
-          [ prevButton height hasPrevious PrevFrame
-          , pauseButton height pause TogglePlay
-          , nextButton height pause NextFrame
-          ]
+            []
+            [ prevButton height hasPrevious PrevFrame
+            , pauseButton height pause TogglePlay
+            , nextButton height pause NextFrame
+            ]
