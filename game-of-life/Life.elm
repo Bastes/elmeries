@@ -185,13 +185,13 @@ generateRandomWorld screen =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions {board, pause} =
+subscriptions { board, pause } =
     let
         tick =
-          if pause then
-            Sub.none
-          else
-            Time.every (second / 10) Tick
+            if pause then
+                Sub.none
+            else
+                Time.every (second / 10) Tick
     in
         Sub.batch
             [ tick
