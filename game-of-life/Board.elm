@@ -7,6 +7,9 @@ import Svg.Events exposing (onMouseDown, onMouseOver, onMouseUp)
 import List exposing (concat, indexedMap, head)
 import Maybe exposing (withDefault, andThen)
 import GameOfLife exposing (World, Cell(..), toggleCell, setCell, step)
+import Json.Decode as Json
+import VirtualDom
+import Debug
 
 
 -- MODEL
@@ -45,12 +48,19 @@ init =
 -- UPDATE
 
 
+type alias Position =
+    { y : Int, x : Int }
+
+
 type Msg
     = SlideStart Int Int Cell
     | SlideHover Int Int Cell
     | SlideStop
     | Step
     | InitWith World
+    | MouseMove Position
+    | MouseDown Position
+    | MouseUp Position
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -99,6 +109,15 @@ update msg ({ worlds } as model) =
             , Cmd.none
             )
 
+        MouseMove pos ->
+            always ( model, Cmd.none ) (Debug.log "mousemove pos: " pos)
+
+        MouseDown pos ->
+            always ( model, Cmd.none ) (Debug.log "mousedown pos: " pos)
+
+        MouseUp pos ->
+            always ( model, Cmd.none ) (Debug.log "mouseup pos: " pos)
+
 
 updateHeadWith : (World -> World) -> List World -> World
 updateHeadWith update worlds =
@@ -144,12 +163,28 @@ view { worlds, dimensions } =
                 |> indexedMap2 cellView
                 |> concat
     in
-        svg [ svgViewBox, svgStyle ] cells
+        svg
+            [ svgViewBox
+            , svgStyle
+            , onMouseWithPosition "mousemove" MouseMove
+            , onMouseWithPosition "mousedown" MouseDown
+            , onMouseWithPosition "mouseup" MouseUp
+            ]
+            cells
+
+
+onMouseWithPosition eventType msg =
+    VirtualDom.on eventType <| Json.map msg offsetPosition
 
 
 indexedMap2 : (Int -> Int -> a -> b) -> List (List a) -> List (List b)
 indexedMap2 f =
     indexedMap (\y -> indexedMap (\x a -> f y x a))
+
+
+offsetPosition : Json.Decoder Position
+offsetPosition =
+    Json.map2 Position (Json.field "offsetY" Json.int) (Json.field "offsetX" Json.int)
 
 
 cellView : Int -> Int -> Cell -> Html Msg
