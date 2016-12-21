@@ -4,9 +4,9 @@ import Html exposing (Html)
 import Svg exposing (svg, rect)
 import Svg.Attributes exposing (viewBox, style, width, height, x, y, fill)
 import Svg.Events exposing (onMouseDown, onMouseOver, onMouseUp)
-import List exposing (concat, indexedMap, head)
-import Maybe exposing (withDefault, andThen)
-import GameOfLife exposing (World, Cell(..), toggleCell, setCell, step)
+import List exposing (concat, indexedMap, head, filterMap)
+import Maybe exposing (withDefault)
+import GameOfLife exposing (World, Cell(..))
 import Json.Decode as Json
 import VirtualDom
 import Debug
@@ -28,16 +28,14 @@ type alias Dimensions =
 
 
 type alias Model =
-    { worlds : List World
-    , dimensions : Dimensions
+    { dimensions : Dimensions
     , dragging : Maybe Cell
     }
 
 
 init : ( Model, Cmd msg )
 init =
-    ( { worlds = [ [] ]
-      , dimensions = ( 0, 0 )
+    ( { dimensions = ( 0, 0 )
       , dragging = Nothing
       }
     , Cmd.none
@@ -53,62 +51,14 @@ type alias Position =
 
 
 type Msg
-    = SlideStart Int Int Cell
-    | SlideHover Int Int Cell
-    | SlideStop
-    | Step
-    | InitWith World
-    | MouseMove Position
+    = MouseMove Position
     | MouseDown Position
     | MouseUp Position
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ worlds } as model) =
+update msg model =
     case msg of
-        SlideStart y x c ->
-            let
-                draggingCell =
-                    toggleCell c
-
-                dragging =
-                    Just draggingCell
-
-                world =
-                    worlds |> updateHeadWith (setCell y x draggingCell)
-            in
-                ( { model | dragging = dragging, worlds = [ world ] }
-                , Cmd.none
-                )
-
-        SlideHover y x c ->
-            let
-                world =
-                    worlds |> updateHeadWith (setCell y x (withDefault c model.dragging))
-            in
-                ( { model | worlds = [ world ] }
-                , Cmd.none
-                )
-
-        SlideStop ->
-            ( { model | dragging = Nothing }
-            , Cmd.none
-            )
-
-        Step ->
-            let
-                world =
-                    worlds |> updateHeadWith step
-            in
-                ( { model | worlds = world :: model.worlds }
-                , Cmd.none
-                )
-
-        InitWith world ->
-            ( { model | worlds = [ world ] }
-            , Cmd.none
-            )
-
         MouseMove pos ->
             always ( model, Cmd.none ) (Debug.log "mousemove pos: " pos)
 
@@ -117,11 +67,6 @@ update msg ({ worlds } as model) =
 
         MouseUp pos ->
             always ( model, Cmd.none ) (Debug.log "mouseup pos: " pos)
-
-
-updateHeadWith : (World -> World) -> List World -> World
-updateHeadWith update worlds =
-    head worlds |> andThen (Just << update) |> withDefault []
 
 
 
@@ -137,12 +82,9 @@ subscriptions _ =
 -- VIEW
 
 
-view : Model -> Html Msg
-view { worlds, dimensions } =
+view : World -> Model -> Html Msg
+view world { dimensions } =
     let
-        world =
-            head worlds |> withDefault []
-
         ( height, width ) =
             dimensions
 
@@ -162,6 +104,7 @@ view { worlds, dimensions } =
             world
                 |> indexedMap2 cellView
                 |> concat
+                |> filterMap identity
     in
         svg
             [ svgViewBox
@@ -177,35 +120,29 @@ onMouseWithPosition eventType msg =
     VirtualDom.on eventType <| Json.map msg offsetPosition
 
 
-indexedMap2 : (Int -> Int -> a -> b) -> List (List a) -> List (List b)
-indexedMap2 f =
-    indexedMap (\y -> indexedMap (\x a -> f y x a))
-
-
 offsetPosition : Json.Decoder Position
 offsetPosition =
     Json.map2 Position (Json.field "offsetY" Json.int) (Json.field "offsetX" Json.int)
 
 
-cellView : Int -> Int -> Cell -> Html Msg
-cellView cy cx c =
-    let
-        fillColor =
-            case c of
-                Dead ->
-                    "#ffffff"
+indexedMap2 : (Int -> Int -> a -> b) -> List (List a) -> List (List b)
+indexedMap2 f =
+    indexedMap (\y -> indexedMap (\x a -> f y x a))
 
-                Live ->
-                    "#000000"
-    in
-        rect
-            [ x (toString cx)
-            , y (toString cy)
-            , width "1"
-            , height "1"
-            , fill fillColor
-            , onMouseDown (SlideStart cy cx c)
-            , onMouseOver (SlideHover cy cx c)
-            , onMouseUp (SlideStop)
-            ]
-            []
+
+cellView : Int -> Int -> Cell -> Maybe (Html Msg)
+cellView cy cx c =
+    case c of
+        Dead ->
+            Nothing
+
+        Live ->
+            Just <|
+                rect
+                    [ x (toString cx)
+                    , y (toString cy)
+                    , width "1"
+                    , height "1"
+                    , fill "#000000"
+                    ]
+                    []

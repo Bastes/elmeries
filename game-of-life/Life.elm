@@ -7,8 +7,8 @@ import Svg.Events exposing (onClick, onMouseDown, onMouseOver, onMouseUp)
 import Window
 import Task
 import Time exposing (Time, second)
-import List exposing (indexedMap, repeat, map, filterMap, concat, take, intersperse)
-import Maybe exposing (withDefault)
+import List exposing (indexedMap, repeat, map, filterMap, concat, take, intersperse, head, tail)
+import Maybe exposing (withDefault, andThen)
 import Random
 import String
 import GameOfLife exposing (..)
@@ -44,7 +44,8 @@ type alias Dimensions =
 
 
 type alias Model =
-    { board : Board.Model
+    { worlds : List World
+    , board : Board.Model
     , screen : Dimensions
     , pause : Bool
     }
@@ -61,7 +62,8 @@ init =
                 (\dimentions -> WindowInit dimentions)
                 Window.size
     in
-        ( { board = board
+        ( { worlds = [ [] ]
+          , board = board
           , screen = { width = 0, height = 0 }
           , pause = True
           }
@@ -88,15 +90,15 @@ type Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ board, pause } as model) =
+update msg ({ worlds, board, pause } as model) =
     case msg of
         Tick _ ->
             let
-                ( newBoard, boardCmds ) =
-                    Board.update Board.Step board
+                newWorld =
+                    head worlds |> withDefault [] |> step
             in
-                ( { model | board = newBoard }
-                , Cmd.map BoardMsg boardCmds
+                ( { model | worlds = newWorld :: worlds }
+                , Cmd.none
                 )
 
         BoardMsg msg ->
@@ -115,20 +117,20 @@ update msg ({ board, pause } as model) =
 
         PrevFrame ->
             let
-                newBoard =
-                    { board | worlds = List.tail board.worlds |> withDefault [] }
+                newWorlds =
+                    tail worlds |> withDefault worlds
             in
-                ( { model | board = newBoard }
+                ( { model | worlds = newWorlds }
                 , Cmd.none
                 )
 
         NextFrame ->
             let
-                ( newBoard, boardCmds ) =
-                    Board.update Board.Step board
+                newWorld =
+                    head worlds |> withDefault [] |> step
             in
-                ( { model | board = newBoard }
-                , Cmd.map BoardMsg boardCmds
+                ( { model | worlds = newWorld :: worlds }
+                , Cmd.none
                 )
 
         WindowInit screen ->
@@ -148,13 +150,9 @@ update msg ({ board, pause } as model) =
             )
 
         WorldInit world ->
-            let
-                ( newBoard, boardCmds ) =
-                    Board.update (Board.InitWith world) board
-            in
-                ( { model | board = newBoard }
-                , Cmd.map BoardMsg boardCmds
-                )
+            ( { model | worlds = [ world ] }
+            , Cmd.none
+            )
 
 
 generateRandomWorld : Dimensions -> Cmd Msg
@@ -213,19 +211,23 @@ controlsHeight =
 
 
 view : Model -> Html Msg
-view { screen, board, pause } =
-    div
-        []
-        [ controls board controlsHeight pause
-        , Html.map BoardMsg (Board.view board)
-        ]
+view { worlds, screen, board, pause } =
+    let
+        world =
+            head worlds |> withDefault []
+    in
+        div
+            []
+            [ controls worlds controlsHeight pause
+            , Html.map BoardMsg (Board.view world board)
+            ]
 
 
-controls : Board.Model -> Height -> Bool -> Html Msg
-controls board height pause =
+controls : List World -> Height -> Bool -> Html Msg
+controls worlds height pause =
     let
         hasPrevious =
-            pause && (List.length board.worlds) > 1
+            pause && (List.length worlds) > 1
     in
         div
             []
