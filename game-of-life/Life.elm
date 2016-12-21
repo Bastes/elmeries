@@ -103,12 +103,14 @@ update msg ({ worlds, board, pause } as model) =
 
         BoardMsg msg ->
             let
-                ( newBoard, boardCmds ) =
+                ( newBoard, boardCmds, string ) =
                     Board.update msg board
             in
-                ( { model | board = newBoard }
-                , Cmd.map BoardMsg boardCmds
-                )
+                always
+                    ( { model | board = newBoard }
+                    , Cmd.map BoardMsg boardCmds
+                    )
+                    (Debug.log "board event: " string)
 
         TogglePlay ->
             ( { model | pause = not pause }

@@ -56,17 +56,17 @@ type Msg
     | MouseUp Position
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg, String )
 update msg model =
     case msg of
         MouseMove pos ->
-            always ( model, Cmd.none ) (Debug.log "mousemove pos: " pos)
+            ( model, Cmd.none, "mousemove pos: " ++ (toString pos) )
 
         MouseDown pos ->
-            always ( model, Cmd.none ) (Debug.log "mousedown pos: " pos)
+            ( model, Cmd.none, "mousedown pos: " ++ (toString pos) )
 
         MouseUp pos ->
-            always ( model, Cmd.none ) (Debug.log "mouseup pos: " pos)
+            ( model, Cmd.none, "mouseup pos: " ++ (toString pos) )
 
 
 
