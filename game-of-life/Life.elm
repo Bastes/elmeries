@@ -45,7 +45,7 @@ type alias Dimensions =
 
 type alias Model =
     { worlds : List World
-    , board : Board.Model
+    , board : Board.Model Cell
     , screen : Dimensions
     , pause : Bool
     }
@@ -85,7 +85,6 @@ type Msg
     | NextFrame
     | BoardMsg Board.Msg
     | WindowInit Dimensions
-    | WindowResize Dimensions
     | WorldInit World
 
 
@@ -143,14 +142,6 @@ update msg ({ worlds, board, pause } as model) =
             , generateRandomWorld screen
             )
 
-        WindowResize screen ->
-            ( { model
-                | screen = screen
-                , board = { board | dimensions = ( screen.height - controlsHeight - cellWidth, screen.width ) }
-              }
-            , Cmd.none
-            )
-
         WorldInit world ->
             ( { model | worlds = [ world ] }
             , Cmd.none
@@ -195,7 +186,7 @@ subscriptions { board, pause } =
     in
         Sub.batch
             [ tick
-            , Window.resizes WindowResize
+            , Window.resizes WindowInit
             , Sub.map BoardMsg (Board.subscriptions board)
             ]
 

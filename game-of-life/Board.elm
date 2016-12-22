@@ -27,13 +27,13 @@ type alias Dimensions =
     ( Height, Width )
 
 
-type alias Model =
+type alias Model a =
     { dimensions : Dimensions
-    , dragging : Maybe Cell
+    , dragging : Maybe a
     }
 
 
-init : ( Model, Cmd msg )
+init : ( Model a, Cmd msg )
 init =
     ( { dimensions = ( 0, 0 )
       , dragging = Nothing
@@ -56,7 +56,7 @@ type Msg
     | MouseUp Position
 
 
-update : Msg -> Model -> ( Model, Cmd Msg, String )
+update : Msg -> Model a -> ( Model a, Cmd Msg, String )
 update msg model =
     case msg of
         MouseMove pos ->
@@ -73,7 +73,7 @@ update msg model =
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model -> Sub Msg
+subscriptions : Model a -> Sub Msg
 subscriptions _ =
     Sub.none
 
@@ -82,7 +82,7 @@ subscriptions _ =
 -- VIEW
 
 
-view : World -> Model -> Html Msg
+view : World -> Model a -> Html Msg
 view world { dimensions } =
     let
         ( height, width ) =
