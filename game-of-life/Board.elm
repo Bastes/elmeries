@@ -1,4 +1,4 @@
-module Board exposing (Model, Msg(..), init, update, subscriptions, view)
+module Board exposing (Model, Msg(..), init, update, subscriptions, view, cellWidth)
 
 import Html exposing (Html)
 import Svg exposing (svg, rect)
@@ -6,7 +6,7 @@ import Svg.Attributes exposing (viewBox, style, width, height, x, y, fill)
 import Svg.Events exposing (onMouseDown, onMouseOver, onMouseUp)
 import List exposing (concat, indexedMap, head, filterMap)
 import Maybe exposing (withDefault)
-import GameOfLife exposing (World, Cell(..))
+import GameOfLife exposing (World, Cell(..), setCell, cellAt, toggleCell)
 import Json.Decode as Json
 import VirtualDom
 import Debug
@@ -27,13 +27,18 @@ type alias Dimensions =
     ( Height, Width )
 
 
-type alias Model a =
+type alias Model =
     { dimensions : Dimensions
-    , dragging : Maybe a
+    , dragging : Maybe Cell
     }
 
 
-init : ( Model a, Cmd msg )
+cellWidth : Int
+cellWidth =
+    20
+
+
+init : ( Model, Cmd msg )
 init =
     ( { dimensions = ( 0, 0 )
       , dragging = Nothing
@@ -51,29 +56,45 @@ type alias Position =
 
 
 type Msg
-    = MouseMove Position
-    | MouseDown Position
-    | MouseUp Position
+    = MouseMove World Position
+    | MouseDown World Position
+    | MouseUp World Position
 
 
-update : Msg -> Model a -> ( Model a, Cmd Msg, String )
+update : Msg -> Model -> ( Model, Cmd Msg, Maybe World )
 update msg model =
     case msg of
-        MouseMove pos ->
-            ( model, Cmd.none, "mousemove pos: " ++ (toString pos) )
+        MouseMove world pos ->
+            case model.dragging of
+                Just dragging ->
+                    let
+                        newWorld =
+                            setCell pos.y pos.x dragging world
+                    in
+                        ( model, Cmd.none, Just newWorld )
 
-        MouseDown pos ->
-            ( model, Cmd.none, "mousedown pos: " ++ (toString pos) )
+                Nothing ->
+                    ( model, Cmd.none, Nothing )
 
-        MouseUp pos ->
-            ( model, Cmd.none, "mouseup pos: " ++ (toString pos) )
+        MouseDown world pos ->
+            let
+                dragging =
+                    cellAt pos.y pos.x world |> toggleCell
+
+                newWorld =
+                    setCell pos.y pos.x dragging world
+            in
+                ( { model | dragging = Just dragging }, Cmd.none, Just newWorld )
+
+        MouseUp world pos ->
+            ( { model | dragging = Nothing }, Cmd.none, Nothing )
 
 
 
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model a -> Sub Msg
+subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.none
 
@@ -82,20 +103,14 @@ subscriptions _ =
 -- VIEW
 
 
-view : World -> Model a -> Html Msg
+view : World -> Model -> Html Msg
 view world { dimensions } =
     let
         ( height, width ) =
             dimensions
 
-        boardHeight =
-            List.length world |> toString
-
-        boardWidth =
-            List.head world |> withDefault [] |> List.length |> toString
-
         svgViewBox =
-            viewBox <| "0 0 " ++ boardWidth ++ " " ++ boardHeight
+            viewBox <| "0 0 " ++ (toString width) ++ " " ++ (toString height)
 
         svgStyle =
             style <| "cursor: pointer; width: " ++ (toString width) ++ "px; height: " ++ (toString height) ++ "px;"
@@ -109,20 +124,29 @@ view world { dimensions } =
         svg
             [ svgViewBox
             , svgStyle
-            , onMouseWithPosition "mousemove" MouseMove
-            , onMouseWithPosition "mousedown" MouseDown
-            , onMouseWithPosition "mouseup" MouseUp
+            , onMouseWithPosition cellWidth "mousemove" <| MouseMove world
+            , onMouseWithPosition cellWidth "mousedown" <| MouseDown world
+            , onMouseWithPosition cellWidth "mouseup" <| MouseUp world
             ]
             cells
 
 
-onMouseWithPosition eventType msg =
-    VirtualDom.on eventType <| Json.map msg offsetPosition
+onMouseWithPosition : Width -> String -> (Position -> Msg) -> VirtualDom.Property Msg
+onMouseWithPosition width eventType msg =
+    let
+        toCoordinate =
+            Json.map (\v -> v // width)
 
+        decodeCoordinate =
+            flip Json.field Json.int >> toCoordinate
 
-offsetPosition : Json.Decoder Position
-offsetPosition =
-    Json.map2 Position (Json.field "offsetY" Json.int) (Json.field "offsetX" Json.int)
+        offsetPosition =
+            Json.map2
+                Position
+                (decodeCoordinate "offsetY")
+                (decodeCoordinate "offsetX")
+    in
+        VirtualDom.on eventType <| Json.map msg offsetPosition
 
 
 indexedMap2 : (Int -> Int -> a -> b) -> List (List a) -> List (List b)
@@ -139,10 +163,10 @@ cellView cy cx c =
         Live ->
             Just <|
                 rect
-                    [ x (toString cx)
-                    , y (toString cy)
-                    , width "1"
-                    , height "1"
+                    [ x (cx * cellWidth |> toString)
+                    , y (cy * cellWidth |> toString)
+                    , width (cellWidth |> toString)
+                    , height (cellWidth |> toString)
                     , fill "#000000"
                     ]
                     []

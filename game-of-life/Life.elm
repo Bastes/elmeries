@@ -45,7 +45,7 @@ type alias Dimensions =
 
 type alias Model =
     { worlds : List World
-    , board : Board.Model Cell
+    , board : Board.Model
     , screen : Dimensions
     , pause : Bool
     }
@@ -102,14 +102,20 @@ update msg ({ worlds, board, pause } as model) =
 
         BoardMsg msg ->
             let
-                ( newBoard, boardCmds, string ) =
+                ( newBoard, boardCmds, maybeWorld ) =
                     Board.update msg board
+
+                newWorlds =
+                    case maybeWorld of
+                        Just world ->
+                            [ world ]
+
+                        Nothing ->
+                            worlds
             in
-                always
-                    ( { model | board = newBoard }
-                    , Cmd.map BoardMsg boardCmds
-                    )
-                    (Debug.log "board event: " string)
+                ( { model | worlds = newWorlds, board = newBoard }
+                , Cmd.map BoardMsg boardCmds
+                )
 
         TogglePlay ->
             ( { model | pause = not pause }
@@ -137,7 +143,7 @@ update msg ({ worlds, board, pause } as model) =
         WindowInit screen ->
             ( { model
                 | screen = screen
-                , board = { board | dimensions = ( screen.height - controlsHeight - cellWidth, screen.width ) }
+                , board = { board | dimensions = ( screen.height - controlsHeight - (screen.height - controlsHeight) % Board.cellWidth, screen.width - screen.width % Board.cellWidth ) }
               }
             , generateRandomWorld screen
             )
@@ -163,10 +169,10 @@ generateRandomWorld screen =
             Random.map deadOrLive (Random.int 0 1)
 
         randomLine =
-            Random.list ((screen.width // cellWidth)) randomCell
+            Random.list ((screen.width // Board.cellWidth)) randomCell
 
         randomWorld =
-            Random.list ((screen.height // cellWidth) - 3) randomLine
+            Random.list ((screen.height // Board.cellWidth) - 3) randomLine
     in
         Random.generate WorldInit randomWorld
 
@@ -195,12 +201,8 @@ subscriptions { board, pause } =
 -- VIEW
 
 
-cellWidth =
-    20
-
-
 controlsHeight =
-    cellWidth * 2
+    Board.cellWidth * 2
 
 
 view : Model -> Html Msg
@@ -210,7 +212,7 @@ view { worlds, screen, board, pause } =
             head worlds |> withDefault []
     in
         div
-            []
+            [ style "line-height: 0;" ]
             [ controls worlds controlsHeight pause
             , Html.map BoardMsg (Board.view world board)
             ]
