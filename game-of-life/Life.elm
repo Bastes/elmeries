@@ -13,7 +13,7 @@ import Random
 import String
 import GameOfLife exposing (..)
 import Board
-import GolButtons exposing (pauseButton, nextButton, prevButton)
+import GolButtons exposing (pauseButton, nextButton, prevButton, randomWorldButton, emptyWorldButton)
 
 
 main =
@@ -85,6 +85,8 @@ type Msg
     | NextFrame
     | BoardMsg Board.Msg
     | WindowInit Dimensions
+    | EmptyWorld
+    | RandomWorld
     | WorldInit World
 
 
@@ -146,6 +148,20 @@ update msg ({ worlds, board, pause } as model) =
                 , board = { board | dimensions = ( screen.height - controlsHeight - (screen.height - controlsHeight) % Board.cellWidth, screen.width - screen.width % Board.cellWidth ) }
               }
             , generateRandomWorld screen
+            )
+
+        EmptyWorld ->
+            let
+                newWorld =
+                    List.repeat (model.screen.height // Board.cellWidth) <| List.repeat (model.screen.width // Board.cellWidth) Dead
+            in
+                ( { model | worlds = [ newWorld ] }
+                , Cmd.none
+                )
+
+        RandomWorld ->
+            ( model
+            , generateRandomWorld model.screen
             )
 
         WorldInit world ->
@@ -227,6 +243,8 @@ controls worlds height pause =
         div
             []
             [ prevButton height hasPrevious PrevFrame
+            , randomWorldButton height pause RandomWorld
+            , emptyWorldButton height pause EmptyWorld
             , pauseButton height pause TogglePlay
             , nextButton height pause NextFrame
             ]

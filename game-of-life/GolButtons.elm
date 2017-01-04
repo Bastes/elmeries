@@ -1,4 +1,4 @@
-module GolButtons exposing (pauseButton, nextButton, prevButton)
+module GolButtons exposing (pauseButton, nextButton, prevButton, randomWorldButton, emptyWorldButton)
 
 import String
 import Html exposing (Html)
@@ -80,6 +80,32 @@ prevButton iWidth active action =
             \fillColor ->
                 [ polygon [ points "6,3 6,7 2,5", fill fillColor ] []
                 , polygon [ points "8,3 8,7 4,5", fill fillColor ] []
+                ]
+    in
+        button iWidth active symbol action
+
+
+randomWorldButton : Width -> Active -> msg -> Html msg
+randomWorldButton iWidth active action =
+    let
+        symbol =
+            \fillColor ->
+                [ polygon [ points "2,2 4,2 4,3 5,3 5,4 3,4 3,3 2,3", fill fillColor ] []
+                , polygon [ points "5,2 7,2 7,4 6,4 6,3 5,3", fill fillColor ] []
+                , polygon [ points "7,4 8,4 8,6 6,6 6,5 7,5", fill fillColor ] []
+                , polygon [ points "3,5 5,5 5,6 4,6 4,8 2,8 2,7 3,7", fill fillColor ] []
+                , polygon [ points "5,6 6,6 6,7 8,7 8,8 5,8", fill fillColor ] []
+                ]
+    in
+        button iWidth active symbol action
+
+
+emptyWorldButton : Width -> Active -> msg -> Html msg
+emptyWorldButton iWidth active action =
+    let
+        symbol =
+            \fillColor ->
+                [ rect [ y "2", x "2", height "6", width "6", fill fillColor ] []
                 ]
     in
         button iWidth active symbol action
