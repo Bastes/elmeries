@@ -1,13 +1,13 @@
 module Main exposing (..)
 
-import Html exposing (Html, div)
+import Html exposing (Html, div, span, text)
 import Svg exposing (svg, rect, g, polygon)
 import Svg.Attributes exposing (viewBox, width, height, x, y, fill, style, points)
 import Svg.Events exposing (onClick, onMouseDown, onMouseOver, onMouseUp)
 import Window
 import Task
 import Time exposing (Time, second)
-import List exposing (indexedMap, repeat, map, filterMap, concat, take, intersperse, head, tail)
+import List exposing (indexedMap, repeat, map, filterMap, concat, take, intersperse, head, tail, length)
 import Maybe exposing (withDefault, andThen)
 import Random
 import String
@@ -98,9 +98,7 @@ update msg ({ worlds, board, pause } as model) =
                 newWorld =
                     head worlds |> withDefault [] |> step
             in
-                ( { model | worlds = newWorld :: worlds }
-                , Cmd.none
-                )
+                ( { model | worlds = newWorld :: worlds }, Cmd.none )
 
         BoardMsg msg ->
             let
@@ -115,59 +113,57 @@ update msg ({ worlds, board, pause } as model) =
                         Nothing ->
                             worlds
             in
-                ( { model | worlds = newWorlds, board = newBoard }
-                , Cmd.map BoardMsg boardCmds
-                )
+                ( { model | worlds = newWorlds, board = newBoard }, Cmd.map BoardMsg boardCmds )
 
         TogglePlay ->
-            ( { model | pause = not pause }
-            , Cmd.none
-            )
+            ( { model | pause = not pause }, Cmd.none )
 
         PrevFrame ->
             let
                 newWorlds =
                     tail worlds |> withDefault worlds
             in
-                ( { model | worlds = newWorlds }
-                , Cmd.none
-                )
+                ( { model | worlds = newWorlds }, Cmd.none )
 
         NextFrame ->
             let
                 newWorld =
                     head worlds |> withDefault [] |> step
             in
-                ( { model | worlds = newWorld :: worlds }
-                , Cmd.none
-                )
+                ( { model | worlds = newWorld :: worlds }, Cmd.none )
 
         WindowInit screen ->
-            ( { model
-                | screen = screen
-                , board = { board | dimensions = ( screen.height - controlsHeight - (screen.height - controlsHeight) % Board.cellWidth, screen.width - screen.width % Board.cellWidth ) }
-              }
-            , generateRandomWorld screen
-            )
+            let
+                dimensions =
+                    ( screen.height - controlsHeight - (screen.height - controlsHeight) % Board.cellWidth
+                    , screen.width - screen.width % Board.cellWidth
+                    )
+            in
+                ( { model
+                    | screen = screen
+                    , board = { board | dimensions = dimensions }
+                  }
+                , generateRandomWorld screen
+                )
 
         EmptyWorld ->
             let
+                width =
+                    (model.screen.width // Board.cellWidth)
+
+                height =
+                    (model.screen.height // Board.cellWidth)
+
                 newWorld =
-                    List.repeat (model.screen.height // Board.cellWidth) <| List.repeat (model.screen.width // Board.cellWidth) Dead
+                    repeat height <| repeat width Dead
             in
-                ( { model | worlds = [ newWorld ] }
-                , Cmd.none
-                )
+                ( { model | worlds = [ newWorld ] }, Cmd.none )
 
         RandomWorld ->
-            ( model
-            , generateRandomWorld model.screen
-            )
+            ( model, generateRandomWorld model.screen )
 
         WorldInit world ->
-            ( { model | worlds = [ world ] }
-            , Cmd.none
-            )
+            ( { model | worlds = [ world ] }, Cmd.none )
 
 
 generateRandomWorld : Dimensions -> Cmd Msg
@@ -238,13 +234,22 @@ controls : List World -> Height -> Bool -> Html Msg
 controls worlds height pause =
     let
         hasPrevious =
-            pause && (List.length worlds) > 1
+            pause && (length worlds) > 1
+
+        counter =
+            span
+                [ style ("position: relative; display: inline-block; vertical-align: top; line-height: 1; text-align: center; color: #ffffff; width: " ++ (height |> toString) ++ "px; height: " ++ (height |> toString) ++ "px;") ]
+                [ span
+                    [ style "position: absolute; display: block; top: 30%; width: 100%;" ]
+                    [ text (length worlds |> toString) ]
+                ]
     in
         div
-            []
-            [ prevButton height hasPrevious PrevFrame
-            , randomWorldButton height pause RandomWorld
+            [ style "background-color: #777777;" ]
+            [ randomWorldButton height pause RandomWorld
             , emptyWorldButton height pause EmptyWorld
+            , counter
+            , prevButton height hasPrevious PrevFrame
             , pauseButton height pause TogglePlay
             , nextButton height pause NextFrame
             ]

@@ -39,9 +39,6 @@ pauseButton iWidth pause action =
         svgStyle =
             style <| "cursor: pointer; width: " ++ sWidth ++ "px; height: " ++ sWidth ++ "px;"
 
-        frame =
-            rect [ y "0", x "0", height sWidth, width sWidth, fill "#777777" ] []
-
         pauseSymbol =
             [ rect [ y "2", x "2", height "6", width "2", fill "#ffffff" ] []
             , rect [ y "2", x "6", height "6", width "2", fill "#ffffff" ] []
@@ -58,7 +55,7 @@ pauseButton iWidth pause action =
                 True ->
                     playSymbol
     in
-        svg [ svgViewBox, svgStyle ] [ g [ onClick action ] (frame :: symbol) ]
+        svg [ svgViewBox, svgStyle ] [ g [ onClick action ] symbol ]
 
 
 nextButton : Width -> Active -> msg -> Html msg
@@ -131,9 +128,6 @@ button iWidth active symbol action =
         svgStyle =
             style <| cursorStyle ++ "width: " ++ sWidth ++ "px; height: " ++ sWidth ++ "px;"
 
-        frame =
-            rect [ y "0", x "0", height sWidth, width sWidth, fill "#777777" ] []
-
         fillColor =
             case active of
                 False ->
@@ -150,4 +144,4 @@ button iWidth active symbol action =
                 True ->
                     [ onClick action ]
     in
-        svg [ svgViewBox, svgStyle ] [ g actions (frame :: (symbol fillColor)) ]
+        svg [ svgViewBox, svgStyle ] [ g actions (symbol fillColor) ]
