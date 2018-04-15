@@ -8,6 +8,7 @@ import Time exposing (Time, second)
 import Math.Vector2 exposing (Vec2, vec2, add, sub, getX, getY, normalize, scale, distance, direction)
 import Array exposing (get, fromList)
 import Maybe exposing (withDefault, andThen)
+import Random
 import Window
 
 
@@ -25,13 +26,23 @@ main =
 
 
 type alias Model =
-    { screen : { width : Int, height : Int } }
+    { screen : Window.Size
+    , particles : List Particle
+    }
+
+
+type alias Particle =
+    { position : Vec2
+    , speed : Vec2
+    }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { screen = { width = 0, height = 0 } }
-    , Task.perform WindowInit Window.size
+    ( { screen = { width = 0, height = 0 }
+      , particles = []
+      }
+    , Task.perform Init Window.size
     )
 
 
@@ -40,20 +51,37 @@ init =
 
 
 type Msg
-    = WindowInit { width : Int, height : Int }
-    | WindowResize { width : Int, height : Int }
+    = Init Window.Size
+    | ParticleInit (List Particle)
+    | Resize Window.Size
     | Tick Time
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        WindowInit ({ width, height } as screen) ->
-            ( { model | screen = screen }
+        Init ({ width, height } as screen) ->
+            let
+                toParticle ( x, y ) =
+                    Particle
+                        (vec2 (x |> toFloat) (y |> toFloat))
+                        (vec2 0 0)
+            in
+                ( { model | screen = screen }
+                , Random.pair
+                    (Random.int 0 width)
+                    (Random.int 0 height)
+                    |> Random.map toParticle
+                    |> Random.list 100
+                    |> Random.generate ParticleInit
+                )
+
+        ParticleInit particles ->
+            ( { model | particles = particles }
             , Cmd.none
             )
 
-        WindowResize ({ width, height } as screen) ->
+        Resize screen ->
             ( { model | screen = screen }
             , Cmd.none
             )
@@ -72,7 +100,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Time.every (second / 60) Tick
-        , Window.resizes WindowResize
+        , Window.resizes Resize
         ]
 
 
@@ -89,4 +117,21 @@ view model =
         svgStyle =
             style "position: fixed; top: 0; left: 0; width: 100%; height: 100%;"
     in
-        svg [ svgViewBox, svgStyle ] []
+        svg
+            [ svgViewBox
+            , svgStyle
+            ]
+            (model.particles
+                |> List.map particleView
+            )
+
+
+particleView : Particle -> Html Msg
+particleView particle =
+    circle
+        [ cx (getX particle.position |> toString)
+        , cy (getY particle.position |> toString)
+        , r "5"
+        , fill "black"
+        ]
+        []
