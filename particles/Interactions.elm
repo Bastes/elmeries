@@ -73,7 +73,7 @@ update msg model =
                 , Random.pair
                     (Random.int 0 width)
                     (Random.int 0 height)
-                    |> Random.list 100
+                    |> Random.list 40
                     |> Random.map (List.indexedMap toParticle)
                     |> Random.generate ParticleInit
                 )
@@ -137,15 +137,15 @@ links particles =
             |> List.map Tuple.second
           )
         , (particles
-            |> List.Extra.zip (particlesTwice |> List.drop 3)
+            |> List.Extra.zip (particlesTwice |> List.drop 4)
             |> List.indexedMap (,)
-            |> List.filter (\( n, _ ) -> n % 3 == 1)
+            |> List.filter (\( n, _ ) -> n % 4 == 2)
             |> List.map Tuple.second
           )
         , (particles
-            |> List.Extra.zip (particlesTwice |> List.drop 4)
+            |> List.Extra.zip (particlesTwice |> List.drop 8)
             |> List.indexedMap (,)
-            |> List.filter (\( n, _ ) -> n % 4 == 1)
+            |> List.filter (\( n, _ ) -> n % 8 == 3)
             |> List.map Tuple.second
           )
         ]
@@ -159,7 +159,7 @@ links particles =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Time.every (second / 60) Tick
+        [ Time.every (second / 30) Tick
         , Window.resizes Resize
         ]
 
