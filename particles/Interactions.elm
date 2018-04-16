@@ -1,15 +1,14 @@
-module Mail exposing (..)
+module Main exposing (..)
 
+import List.Extra
 import Html exposing (Html)
 import Svg exposing (svg, circle, node, line, radialGradient, stop, defs)
-import Svg.Attributes exposing (viewBox, width, height, cx, cy, x1, x2, y1, y2, r, stroke, fill, style, id, offset, stopColor, stopOpacity)
+import Svg.Attributes exposing (viewBox, width, height, cx, cy, x1, x2, y1, y2, r, stroke, strokeWidth, fill, style, id, offset, stopColor, stopOpacity)
 import Task
 import Time exposing (Time, second)
-import Math.Vector2 exposing (Vec2, vec2, add, sub, getX, getY, normalize, scale, distance, direction)
-import Array exposing (get, fromList)
-import Maybe exposing (withDefault, andThen)
 import Random
 import Window
+import Visualization.Force as Force
 
 
 main =
@@ -28,19 +27,19 @@ main =
 type alias Model =
     { screen : Window.Size
     , particles : List Particle
+    , simulation : Force.State Int
     }
 
 
 type alias Particle =
-    { position : Vec2
-    , speed : Vec2
-    }
+    Force.Entity Int {}
 
 
 init : ( Model, Cmd Msg )
 init =
     ( { screen = { width = 0, height = 0 }
       , particles = []
+      , simulation = Force.simulation []
       }
     , Task.perform Init Window.size
     )
@@ -62,24 +61,44 @@ update msg model =
     case msg of
         Init ({ width, height } as screen) ->
             let
-                toParticle ( x, y ) =
-                    Particle
-                        (vec2 (x |> toFloat) (y |> toFloat))
-                        (vec2 0 0)
+                toParticle id ( x, y ) =
+                    { id = id
+                    , x = (x |> toFloat)
+                    , y = (y |> toFloat)
+                    , vx = 0
+                    , vy = 0
+                    }
             in
                 ( { model | screen = screen }
                 , Random.pair
                     (Random.int 0 width)
                     (Random.int 0 height)
-                    |> Random.map toParticle
                     |> Random.list 100
+                    |> Random.map (List.indexedMap toParticle)
                     |> Random.generate ParticleInit
                 )
 
         ParticleInit particles ->
-            ( { model | particles = particles }
-            , Cmd.none
-            )
+            let
+                ids =
+                    particles |> List.map .id
+
+                allLinks =
+                    (links particles |> List.map (\( p1, p2 ) -> ( p1.id, p2.id )))
+            in
+                ( { model
+                    | particles = particles
+                    , simulation =
+                        Force.simulation
+                            [ Force.center
+                                ((model.screen.width |> toFloat) / 2)
+                                ((model.screen.height |> toFloat) / 2)
+                            , Force.manyBody ids
+                            , Force.links allLinks
+                            ]
+                  }
+                , Cmd.none
+                )
 
         Resize screen ->
             ( { model | screen = screen }
@@ -87,9 +106,50 @@ update msg model =
             )
 
         Tick _ ->
-            ( model
-            , Cmd.none
-            )
+            let
+                ( simulation, particles ) =
+                    model.particles
+                        |> Force.tick model.simulation
+            in
+                ( { model
+                    | particles = particles
+                    , simulation = simulation |> Force.reheat
+                  }
+                , Cmd.none
+                )
+
+
+links : List Particle -> List ( Particle, Particle )
+links particles =
+    let
+        particlesTwice =
+            particles ++ particles
+    in
+        [ (particles
+            |> List.Extra.zip (particlesTwice |> List.drop 1)
+            |> List.indexedMap (,)
+            |> List.map Tuple.second
+          )
+        , (particles
+            |> List.Extra.zip (particlesTwice |> List.drop 2)
+            |> List.indexedMap (,)
+            |> List.filter (\( n, _ ) -> n % 2 == 1)
+            |> List.map Tuple.second
+          )
+        , (particles
+            |> List.Extra.zip (particlesTwice |> List.drop 3)
+            |> List.indexedMap (,)
+            |> List.filter (\( n, _ ) -> n % 3 == 1)
+            |> List.map Tuple.second
+          )
+        , (particles
+            |> List.Extra.zip (particlesTwice |> List.drop 4)
+            |> List.indexedMap (,)
+            |> List.filter (\( n, _ ) -> n % 4 == 1)
+            |> List.map Tuple.second
+          )
+        ]
+            |> List.concat
 
 
 
@@ -121,17 +181,31 @@ view model =
             [ svgViewBox
             , svgStyle
             ]
-            (model.particles
-                |> List.map particleView
+            ([]
+                ++ (model.particles |> List.map particleView)
+                ++ (model.particles |> links |> List.map linkView)
             )
 
 
 particleView : Particle -> Html Msg
 particleView particle =
     circle
-        [ cx (getX particle.position |> toString)
-        , cy (getY particle.position |> toString)
+        [ cx (particle.x |> toString)
+        , cy (particle.y |> toString)
         , r "5"
         , fill "black"
+        ]
+        []
+
+
+linkView : ( Particle, Particle ) -> Html Msg
+linkView ( from, to ) =
+    line
+        [ x1 <| toString <| from.x
+        , y1 <| toString <| from.y
+        , x2 <| toString <| to.x
+        , y2 <| toString <| to.y
+        , stroke "black"
+        , strokeWidth "1"
         ]
         []
