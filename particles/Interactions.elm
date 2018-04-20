@@ -11,6 +11,7 @@ import Window
 import Visualization.Force as Force
 
 
+main : Program Never Model Msg
 main =
     Html.program
         { init = init
