@@ -182,9 +182,10 @@ view model =
             [ svgViewBox
             , svgStyle
             ]
-            ([]
-                ++ (model.particles |> List.map particleView)
-                ++ (model.particles |> links |> List.map linkView)
+            ([ (model.particles |> links |> List.map linkView)
+             , (model.particles |> List.map particleView)
+             ]
+                |> List.concat
             )
 
 
