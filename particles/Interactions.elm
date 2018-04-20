@@ -1,6 +1,7 @@
 module Main exposing (..)
 
 import List.Extra
+import Maybe.Extra
 import Html exposing (Html)
 import Svg exposing (svg, circle, node, line, radialGradient, stop, defs)
 import Svg.Attributes exposing (viewBox, width, height, cx, cy, x1, x2, y1, y2, r, stroke, strokeWidth, fill, style, id, offset, stopColor, stopOpacity)
@@ -28,8 +29,13 @@ main =
 type alias Model =
     { screen : Window.Size
     , particles : List Particle
+    , links : List Link
     , simulation : Force.State Int
     }
+
+
+type alias Link =
+    ( Int, Int )
 
 
 type alias Particle =
@@ -40,6 +46,7 @@ init : ( Model, Cmd Msg )
 init =
     ( { screen = { width = 0, height = 0 }
       , particles = []
+      , links = []
       , simulation = Force.simulation []
       }
     , Task.perform Init Window.size
@@ -84,18 +91,19 @@ update msg model =
                 ids =
                     particles |> List.map .id
 
-                allLinks =
-                    (links particles |> List.map (\( p1, p2 ) -> ( p1.id, p2.id )))
+                links =
+                    initLinks ids
             in
                 ( { model
                     | particles = particles
+                    , links = links
                     , simulation =
                         Force.simulation
                             [ Force.center
                                 ((model.screen.width |> toFloat) / 2)
                                 ((model.screen.height |> toFloat) / 2)
                             , Force.manyBody ids
-                            , Force.links allLinks
+                            , Force.links links
                             ]
                   }
                 , Cmd.none
@@ -120,8 +128,8 @@ update msg model =
                 )
 
 
-links : List Particle -> List ( Particle, Particle )
-links particles =
+initLinks : List Int -> List Link
+initLinks particles =
     let
         particlesTwice =
             particles ++ particles
@@ -182,11 +190,27 @@ view model =
             [ svgViewBox
             , svgStyle
             ]
-            ([ (model.particles |> links |> List.map linkView)
+            ([ (model.links
+                    |> List.map (linkParticlesMaybe model.particles)
+                    |> Maybe.Extra.values
+                    |> List.map linkView
+               )
              , (model.particles |> List.map particleView)
              ]
                 |> List.concat
             )
+
+
+findParticle : Int -> List Particle -> Maybe Particle
+findParticle id =
+    List.Extra.find (.id >> (==) id)
+
+
+linkParticlesMaybe : List Particle -> ( Int, Int ) -> Maybe ( Particle, Particle )
+linkParticlesMaybe particles ( id1, id2 ) =
+    Just (,)
+        |> Maybe.Extra.andMap (particles |> findParticle id1)
+        |> Maybe.Extra.andMap (particles |> findParticle id2)
 
 
 particleView : Particle -> Html Msg
