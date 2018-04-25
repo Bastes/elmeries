@@ -5,6 +5,7 @@ import Maybe.Extra
 import Html exposing (Html)
 import Svg exposing (svg, circle, node, line, radialGradient, stop, defs)
 import Svg.Attributes exposing (viewBox, width, height, cx, cy, x1, x2, y1, y2, r, stroke, strokeWidth, fill, style, id, offset, stopColor, stopOpacity)
+import Svg.Events exposing (onClick, onMouseOver)
 import Task
 import Time exposing (Time, second)
 import Random
@@ -31,7 +32,18 @@ type alias Model =
     , particles : List Particle
     , links : List Link
     , simulation : Force.State Int
+    , hovering : Maybe Hovering
+    , selected : Maybe Selected
     }
+
+
+type Hovering
+    = HoveringLink ( Int, Int )
+    | HoveringParticle Int
+
+
+type alias Selected =
+    Int
 
 
 type alias Link =
@@ -48,6 +60,8 @@ init =
       , particles = []
       , links = []
       , simulation = Force.simulation []
+      , hovering = Nothing
+      , selected = Nothing
       }
     , Task.perform Init Window.size
     )
@@ -62,6 +76,8 @@ type Msg
     | ParticleInit (List Particle)
     | Resize Window.Size
     | Tick Time
+    | Activate
+    | Hover Hovering
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -88,23 +104,17 @@ update msg model =
 
         ParticleInit particles ->
             let
-                ids =
-                    particles |> List.map .id
-
                 links =
-                    initLinks ids
+                    initLinks (particles |> List.map .id)
+
+                newModel =
+                    { model
+                        | particles = particles
+                        , links = links
+                    }
             in
-                ( { model
-                    | particles = particles
-                    , links = links
-                    , simulation =
-                        Force.simulation
-                            [ Force.center
-                                ((model.screen.width |> toFloat) / 2)
-                                ((model.screen.height |> toFloat) / 2)
-                            , Force.manyBody ids
-                            , Force.links links
-                            ]
+                ( { newModel
+                    | simulation = initSim newModel
                   }
                 , Cmd.none
                 )
@@ -126,6 +136,43 @@ update msg model =
                   }
                 , Cmd.none
                 )
+
+        Activate ->
+            let
+                newModel =
+                    case ( model.hovering, model.selected ) of
+                        ( Just (HoveringLink link), _ ) ->
+                            { model | links = model.links |> List.filter ((/=) link) }
+
+                        ( Just (HoveringParticle id), Just selectedId ) ->
+                            if id == selectedId then
+                                { model
+                                    | particles = model.particles |> List.filter (.id >> (/=) id)
+                                    , links = model.links |> List.filter (\( id1, id2 ) -> id1 /= id && id2 /= id)
+                                    , selected = Nothing
+                                }
+                            else
+                                { model
+                                    | links = ( id, selectedId ) :: model.links
+                                    , selected = Nothing
+                                }
+
+                        ( Just (HoveringParticle id), Nothing ) ->
+                            { model | selected = Just id }
+
+                        _ ->
+                            model
+            in
+                ( { newModel
+                    | simulation = initSim newModel
+                  }
+                , Cmd.none
+                )
+
+        Hover hovering ->
+            ( { model | hovering = Just hovering }
+            , Cmd.none
+            )
 
 
 initLinks : List Int -> List Link
@@ -161,6 +208,17 @@ initLinks particles =
             |> List.concat
 
 
+initSim : Model -> Force.State Int
+initSim model =
+    Force.simulation
+        [ Force.center
+            ((model.screen.width |> toFloat) / 2)
+            ((model.screen.height |> toFloat) / 2)
+        , Force.manyBody (model.particles |> List.map .id)
+        , Force.links model.links
+        ]
+
+
 
 -- SUBSCRIPTIONS
 
@@ -189,13 +247,14 @@ view model =
         svg
             [ svgViewBox
             , svgStyle
+            , onClick Activate
             ]
             ([ (model.links
                     |> List.map (linkParticlesMaybe model.particles)
                     |> Maybe.Extra.values
-                    |> List.map linkView
+                    |> List.map (linkView model.hovering)
                )
-             , (model.particles |> List.map particleView)
+             , (model.particles |> List.map (particleView model.hovering model.selected))
              ]
                 |> List.concat
             )
@@ -213,25 +272,45 @@ linkParticlesMaybe particles ( id1, id2 ) =
         |> Maybe.Extra.andMap (particles |> findParticle id2)
 
 
-particleView : Particle -> Html Msg
-particleView particle =
-    circle
-        [ cx (particle.x |> toString)
-        , cy (particle.y |> toString)
-        , r "5"
-        , fill "black"
-        ]
-        []
+particleView : Maybe Hovering -> Maybe Selected -> Particle -> Html Msg
+particleView hovering selected particle =
+    let
+        fillColor =
+            (if selected == Just particle.id then
+                "lightgreen"
+             else if hovering == Just (HoveringParticle particle.id) then
+                "red"
+             else
+                "black"
+            )
+    in
+        circle
+            [ cx (particle.x |> toString)
+            , cy (particle.y |> toString)
+            , r "10"
+            , fill fillColor
+            , onMouseOver (Hover (HoveringParticle particle.id))
+            ]
+            []
 
 
-linkView : ( Particle, Particle ) -> Html Msg
-linkView ( from, to ) =
-    line
-        [ x1 <| toString <| from.x
-        , y1 <| toString <| from.y
-        , x2 <| toString <| to.x
-        , y2 <| toString <| to.y
-        , stroke "black"
-        , strokeWidth "1"
-        ]
-        []
+linkView : Maybe Hovering -> ( Particle, Particle ) -> Html Msg
+linkView hovering ( from, to ) =
+    let
+        strokeColor =
+            (if hovering == Just (HoveringLink ( from.id, to.id )) then
+                "red"
+             else
+                "black"
+            )
+    in
+        line
+            [ x1 <| toString <| from.x
+            , y1 <| toString <| from.y
+            , x2 <| toString <| to.x
+            , y2 <| toString <| to.y
+            , stroke strokeColor
+            , strokeWidth "5"
+            , onMouseOver (Hover (HoveringLink ( from.id, to.id )))
+            ]
+            []
