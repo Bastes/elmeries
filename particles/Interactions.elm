@@ -3,14 +3,15 @@ module Main exposing (..)
 import List.Extra
 import Maybe.Extra
 import Html exposing (Html)
-import Svg exposing (svg, circle, node, line, radialGradient, stop, defs)
-import Svg.Attributes exposing (viewBox, width, height, cx, cy, x1, x2, y1, y2, r, stroke, strokeWidth, fill, style, id, offset, stopColor, stopOpacity)
-import Svg.Events exposing (onClick, onMouseOver)
+import Svg exposing (svg, circle, node, line, radialGradient, rect, stop, defs)
+import Svg.Attributes exposing (viewBox, width, height, cx, cy, x, x1, x2, y, y1, y2, r, stroke, strokeWidth, fill, style, id, offset, stopColor, stopOpacity)
+import Svg.Events exposing (on, onClick, onMouseOver)
 import Task
 import Time exposing (Time, second)
 import Random
 import Window
 import Visualization.Force as Force
+import Json.Decode as Decode exposing (Value, field)
 
 
 main : Program Never Model Msg
@@ -31,27 +32,45 @@ type alias Model =
     { screen : Window.Size
     , particles : List Particle
     , links : List Link
-    , simulation : Force.State Int
-    , hovering : Maybe Hovering
-    , selected : Maybe Selected
+    , simulation : Force.State ParticleId
+    , tool : Tool
     }
 
 
-type Hovering
-    = HoveringLink ( Int, Int )
-    | HoveringParticle Int
+type alias Position =
+    { x : Int
+    , y : Int
+    }
 
 
-type alias Selected =
+type Tool
+    = Add (Maybe ParticleId)
+    | Delete
+
+
+sameTool : Tool -> Tool -> Bool
+sameTool tool1 tool2 =
+    case ( tool1, tool2 ) of
+        ( Add _, Add _ ) ->
+            True
+
+        ( Delete, Delete ) ->
+            True
+
+        _ ->
+            False
+
+
+type alias ParticleId =
     Int
 
 
 type alias Link =
-    ( Int, Int )
+    ( ParticleId, ParticleId )
 
 
 type alias Particle =
-    Force.Entity Int {}
+    Force.Entity ParticleId {}
 
 
 init : ( Model, Cmd Msg )
@@ -60,8 +79,7 @@ init =
       , particles = []
       , links = []
       , simulation = Force.simulation []
-      , hovering = Nothing
-      , selected = Nothing
+      , tool = Delete
       }
     , Task.perform Init Window.size
     )
@@ -76,8 +94,10 @@ type Msg
     | ParticleInit (List Particle)
     | Resize Window.Size
     | Tick Time
-    | Activate
-    | Hover Hovering
+    | ChangeTool Tool
+    | ActivateParticle ParticleId
+    | ActivateLink Link
+    | ActivateSpace Position
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -137,45 +157,107 @@ update msg model =
                 , Cmd.none
                 )
 
-        Activate ->
-            let
-                newModel =
-                    case ( model.hovering, model.selected ) of
-                        ( Just (HoveringLink link), _ ) ->
-                            { model | links = model.links |> List.filter ((/=) link) }
-
-                        ( Just (HoveringParticle id), Just selectedId ) ->
-                            if id == selectedId then
-                                { model
-                                    | particles = model.particles |> List.filter (.id >> (/=) id)
-                                    , links = model.links |> List.filter (\( id1, id2 ) -> id1 /= id && id2 /= id)
-                                    , selected = Nothing
-                                }
-                            else
-                                { model
-                                    | links = ( id, selectedId ) :: model.links
-                                    , selected = Nothing
-                                }
-
-                        ( Just (HoveringParticle id), Nothing ) ->
-                            { model | selected = Just id }
-
-                        _ ->
-                            model
-            in
-                ( { newModel
-                    | simulation = initSim newModel
-                  }
-                , Cmd.none
-                )
-
-        Hover hovering ->
-            ( { model | hovering = Just hovering }
+        ChangeTool tool ->
+            ( { model | tool = tool }
             , Cmd.none
             )
 
+        ActivateParticle id ->
+            let
+                newModel =
+                    case model.tool of
+                        Add Nothing ->
+                            { model | tool = Add (Just id) }
 
-initLinks : List Int -> List Link
+                        Add (Just otherId) ->
+                            let
+                                link =
+                                    ( id, otherId )
+                            in
+                                { model
+                                    | links = link :: (model.links |> List.filter (not << sameLink link))
+                                    , tool = Add Nothing
+                                }
+                                    |> updateSim
+
+                        Delete ->
+                            { model
+                                | particles = model.particles |> List.filter (.id >> (/=) id)
+                                , links = model.links |> List.filter (not << hasParticle id)
+                            }
+                                |> updateSim
+            in
+                ( newModel
+                , Cmd.none
+                )
+
+        ActivateLink link ->
+            let
+                newModel =
+                    case model.tool of
+                        Add _ ->
+                            { model | tool = Add Nothing }
+
+                        Delete ->
+                            { model
+                                | links = model.links |> List.filter (not << sameLink link)
+                            }
+                                |> updateSim
+            in
+                ( newModel
+                , Cmd.none
+                )
+
+        ActivateSpace { x, y } ->
+            let
+                newParticle =
+                    { id =
+                        model.particles
+                            |> List.Extra.maximumBy .id
+                            |> Maybe.map .id
+                            |> Maybe.withDefault 0
+                            |> ((+) 1)
+                    , x = x |> toFloat
+                    , y = y |> toFloat
+                    , vx = 0
+                    , vy = 0
+                    }
+
+                newModel =
+                    case model.tool of
+                        Add Nothing ->
+                            { model
+                                | particles = newParticle :: model.particles
+                            }
+                                |> updateSim
+
+                        Add (Just id) ->
+                            { model
+                                | particles = newParticle :: model.particles
+                                , links = ( id, newParticle.id ) :: model.links
+                                , tool = Add (Just newParticle.id)
+                            }
+                                |> updateSim
+
+                        Delete ->
+                            model
+            in
+                ( newModel
+                , Cmd.none
+                )
+
+
+sameLink : Link -> Link -> Bool
+sameLink ( from1, to1 ) ( from2, to2 ) =
+    ( from1, to1 ) == ( from2, to2 ) || ( from1, to1 ) == ( to2, from2 )
+
+
+hasParticle : ParticleId -> Link -> Bool
+hasParticle id ( from, to ) =
+    id == from || id == to
+
+
+initLinks : List ParticleId -> List Link
 initLinks particles =
     let
         particlesTwice =
@@ -208,7 +290,7 @@ initLinks particles =
             |> List.concat
 
 
-initSim : Model -> Force.State Int
+initSim : Model -> Force.State ParticleId
 initSim model =
     Force.simulation
         [ Force.center
@@ -217,6 +299,11 @@ initSim model =
         , Force.manyBody (model.particles |> List.map .id)
         , Force.links model.links
         ]
+
+
+updateSim : Model -> Model
+updateSim model =
+    { model | simulation = initSim model }
 
 
 
@@ -235,6 +322,14 @@ subscriptions model =
 -- VIEW
 
 
+position : Decode.Decoder Position
+position =
+    Decode.map2
+        Position
+        (Decode.field "clientX" Decode.int)
+        (Decode.field "clientY" Decode.int)
+
+
 view : Model -> Html Msg
 view model =
     let
@@ -247,70 +342,109 @@ view model =
         svg
             [ svgViewBox
             , svgStyle
-            , onClick Activate
             ]
-            ([ (model.links
+            ([ [ rect
+                    [ x "0"
+                    , y "0"
+                    , width (toString model.screen.width)
+                    , height (toString model.screen.height)
+                    , fill "white"
+                    , on "click" (position |> Decode.map ActivateSpace)
+                    ]
+                    []
+               ]
+             , model.tool |> toolsView
+             , (model.links
                     |> List.map (linkParticlesMaybe model.particles)
                     |> Maybe.Extra.values
-                    |> List.map (linkView model.hovering)
+                    |> List.map linkView
                )
-             , (model.particles |> List.map (particleView model.hovering model.selected))
+             , (model.particles |> List.map (particleView model.tool))
              ]
                 |> List.concat
             )
 
 
-findParticle : Int -> List Particle -> Maybe Particle
+findParticle : ParticleId -> List Particle -> Maybe Particle
 findParticle id =
     List.Extra.find (.id >> (==) id)
 
 
-linkParticlesMaybe : List Particle -> ( Int, Int ) -> Maybe ( Particle, Particle )
+toolsView : Tool -> List (Html Msg)
+toolsView tool =
+    [ toolView tool "#00FF00" "#007700" 0 (Add Nothing)
+    , toolView tool "#FF0000" "#770000" 1 Delete
+    ]
+
+
+toolButtonWidth : Int
+toolButtonWidth =
+    30
+
+
+toolView : Tool -> String -> String -> Int -> Tool -> Html Msg
+toolView current colorOn colorOff leftOffset tool =
+    let
+        color =
+            if tool |> sameTool current then
+                colorOn
+            else
+                colorOff
+    in
+        rect
+            [ x ((leftOffset * toolButtonWidth) |> toString)
+            , y "0"
+            , width (toolButtonWidth |> toString)
+            , height (toolButtonWidth |> toString)
+            , fill color
+            , onClick (ChangeTool tool)
+            ]
+            []
+
+
+linkParticlesMaybe : List Particle -> ( ParticleId, ParticleId ) -> Maybe ( Particle, Particle )
 linkParticlesMaybe particles ( id1, id2 ) =
     Just (,)
         |> Maybe.Extra.andMap (particles |> findParticle id1)
         |> Maybe.Extra.andMap (particles |> findParticle id2)
 
 
-particleView : Maybe Hovering -> Maybe Selected -> Particle -> Html Msg
-particleView hovering selected particle =
+particleView : Tool -> Particle -> Html Msg
+particleView tool particle =
     let
+        defaultColor =
+            "black"
+
         fillColor =
-            (if selected == Just particle.id then
-                "lightgreen"
-             else if hovering == Just (HoveringParticle particle.id) then
-                "red"
-             else
-                "black"
-            )
+            case tool of
+                Add (Just id) ->
+                    if id == particle.id then
+                        "#00FF00"
+                    else
+                        defaultColor
+
+                _ ->
+                    defaultColor
     in
         circle
             [ cx (particle.x |> toString)
             , cy (particle.y |> toString)
             , r "10"
             , fill fillColor
-            , onMouseOver (Hover (HoveringParticle particle.id))
+            , onClick (ActivateParticle particle.id)
             ]
             []
 
 
-linkView : Maybe Hovering -> ( Particle, Particle ) -> Html Msg
-linkView hovering ( from, to ) =
-    let
-        strokeColor =
-            (if hovering == Just (HoveringLink ( from.id, to.id )) then
-                "red"
-             else
-                "black"
-            )
-    in
-        line
-            [ x1 <| toString <| from.x
-            , y1 <| toString <| from.y
-            , x2 <| toString <| to.x
-            , y2 <| toString <| to.y
-            , stroke strokeColor
-            , strokeWidth "5"
-            , onMouseOver (Hover (HoveringLink ( from.id, to.id )))
-            ]
-            []
+linkView : ( Particle, Particle ) -> Html Msg
+linkView ( from, to ) =
+    line
+        [ x1 <| toString <| from.x
+        , y1 <| toString <| from.y
+        , x2 <| toString <| to.x
+        , y2 <| toString <| to.y
+        , stroke "black"
+        , strokeWidth "5"
+        , onClick (ActivateLink ( from.id, to.id ))
+        ]
+        []
